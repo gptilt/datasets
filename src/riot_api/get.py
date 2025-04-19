@@ -5,7 +5,6 @@ import os
 
 BASE_URL_REGION = lambda region: f"https://{region}.api.riotgames.com"
 BASE_URL_PLATFORM = lambda platform: f"https://{platform}.api.riotgames.com"
-HEADERS = {"X-Riot-Token": os.getenv("RIOT_API_KEY")}
 ENDPOINTS = {
     'players': lambda platform:
         f"{BASE_URL_PLATFORM(platform)}/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5",
@@ -36,7 +35,7 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
     try:
         url = ENDPOINTS[endpoint](**kwargs)
         for attempt in range(6):
-            async with session.get(url, headers=HEADERS) as response:
+            async with session.get(url, headers={"X-Riot-Token": os.getenv("RIOT_API_KEY")}) as response:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", 30))
                     print(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")

@@ -5,8 +5,8 @@ from storage import Storage
 
 
 class StorageParquet(Storage):
-    def __init__(self, dataset: str, schema: str, region: str, tables: list[str]):
-        super().__init__(dataset, schema, region, tables, file_extension='parquet')
+    def __init__(self, root: str, dataset: str, schema: str, tables: list[str]):
+        super().__init__(root, dataset, schema, tables, file_extension='parquet')
         self.target_batch_size = 1_000_000_000  # 1 GB
         self.buffer = {
             table_name: []
@@ -74,6 +74,7 @@ class StorageParquet(Storage):
         table_name: str,
         list_of_records: list[dict],
         schema: pa.Schema | None = None,
+        **partition_columns: dict[str, str] | None,
     ):
         """
         Write a batch of data to the dataset.
@@ -92,13 +93,13 @@ class StorageParquet(Storage):
             buffer_size = table.nbytes
 
             if buffer_size >= self.target_batch_size:
-                self.write_to_dataset(table_name, table)
+                self.write_to_dataset(table_name, table, **partition_columns)
                 self.buffer[table_name] = []
-                print(f"[{self.region}][{table_name}] Records saved to storage.")
+                print(f"[{table_name}] Records saved to storage.")
             else:
-                print(f"[{self.region}][{table_name}] Buffer size is {buffer_size / 1e6:.2f}MB.")
+                print(f"[{table_name}] Buffer size is {buffer_size / 1e6:.2f}MB.")
     
-    def flush(self):
+    def flush(self, **partition_columns: dict[str, str] | None):
         """
         Write any remaining buffered records to disk.
         Should be called explicitly after processing is complete.
@@ -106,17 +107,20 @@ class StorageParquet(Storage):
         for table_name, buffered_records in self.buffer.items():
             if buffered_records:
                 table = pa.Table.from_pylist(buffered_records)
-                self.store_batch(table_name, table)
+                self.store_batch(table_name, table, **partition_columns)
                 self.buffer[table_name] = []
 
-    def write_to_dataset(self, table_name: str, table: pa.Table):
-        table_dir = self.table_path(table_name)
+    def write_to_dataset(self, table_name: str, table: pa.Table, **partition_columns: str | None):
+        # Add partition columns to the table
+        for col_name, col_value in partition_columns.items():
+            if col_value is not None:
+                col_array = pa.array([col_value] * len(table))
+                table = table.append_column(col_name, col_array)
 
-        # Count existing parquet files to determine the next index
-        existing_files = list(table_dir.glob("parquet_*.parquet"))
-        next_index = len(existing_files)
-        filename = f"parquet_{next_index:04d}.parquet"
-        file_path = table_dir / filename
-
-        pq.write_table(table, file_path)
-        print(f"Wrote {len(table)} rows to {file_path}, size: {table.nbytes / 1e6:.2f}MB")
+        ds.write_dataset(
+            data=table,
+            base_dir=self.table_path(table_name),
+            format="parquet",
+            partitioning=list(partition_columns.keys()) if partition_columns else None,
+        )
+        print(f"Wrote {len(table)} rows to {table}, size: {table.nbytes / 1e6:.2f}MB")

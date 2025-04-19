@@ -1,25 +1,16 @@
-import os
-import tempfile
 import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
 from storage import StorageParquet
+from unittest.mock import MagicMock
 
 
 @pytest.fixture
-def temp_env_root():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.environ["DIR_ROOT"] = tmpdir
-        yield tmpdir
-
-
-@pytest.fixture
-def storage_parquet(temp_env_root):
+def storage_parquet(tmp_path):
     dataset = "gptilt"
     schema = "match_v5"
-    region = "euw1"
     tables = ["games", "players"]
-    return StorageParquet(dataset, schema, region, tables)
+    return StorageParquet(tmp_path, dataset, schema, tables)
 
 
 def test_initialization_defaults(storage_parquet):
@@ -71,7 +62,7 @@ def test_write_to_dataset_creates_file(storage_parquet):
 
     storage_parquet.write_to_dataset("games", table)
 
-    output_files = list(storage_parquet.table_path("games").glob("parquet_*.parquet"))
+    output_files = list(storage_parquet.table_path("games").glob("part*.parquet"))
     assert len(output_files) == 1
     assert pq.read_table(output_files[0]).to_pylist() == data
 
@@ -79,12 +70,34 @@ def test_write_to_dataset_creates_file(storage_parquet):
 def test_store_batch_buffers_and_writes(storage_parquet):
     storage_parquet.target_batch_size = 0  # Force write regardless of size
 
-    data = [{"name": f"Player{i}", "score": i} for i in range(100)]
+    data = [{"name": f"Player{i}", "score": i} for i in range(1000)]
     storage_parquet.store_batch("players", data)
 
-    output_files = list(storage_parquet.table_path("players").glob("parquet_*.parquet"))
+    output_files = list(storage_parquet.table_path("players").glob("part*.parquet"))
     assert len(output_files) == 1
 
     table = pq.read_table(output_files[0])
-    assert len(table) == 100
+    assert len(table) == 1000
     assert table.column("name").to_pylist()[0] == "Player0"
+
+
+def test_flush_calls_store_batch_with_partition_columns(storage_parquet):
+    # Put dummy data into the buffer
+    table_name = storage_parquet.tables[0]
+    storage_parquet.buffer[table_name] = [{"foo": "bar"}, {"foo": "baz"}]
+
+    # Mock store_batch so it doesn't actually write
+    storage_parquet.store_batch = MagicMock()
+
+    # Call flush with a fake partition column
+    storage_parquet.flush(region="europe")
+
+    # Check store_batch was called once with the correct arguments
+    storage_parquet.store_batch.assert_called_once()
+    args, kwargs = storage_parquet.store_batch.call_args
+    assert args[0] == table_name
+    assert isinstance(args[1], pa.Table)
+    assert kwargs == {"region": "europe"}
+
+    # After flush, buffer should be empty
+    assert storage_parquet.buffer[table_name] == []

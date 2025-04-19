@@ -2,6 +2,10 @@
 
 Open datasets for the community!
 
+ETL can be executed by running:
+
+- `ds-riot-api`: Has two subcommands, `raw` and `stg`. Both require the parameters `--key` and `--root`, that specify the Riot API Key, and the storage root directory, respectively. Additionally, `stg` also admits the flag option `--flush`, which forces it to write to disk even if a table's partition is smaller than 1GB.
+
 ## License
 
 All datasets are licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).

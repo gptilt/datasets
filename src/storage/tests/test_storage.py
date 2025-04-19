@@ -1,21 +1,13 @@
-import os
-import tempfile
 import pytest
 from storage import Storage
 
-@pytest.fixture
-def temp_env_root():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        os.environ["DIR_ROOT"] = tmpdir
-        yield tmpdir
 
 @pytest.fixture
-def storage_instance(temp_env_root):
+def storage_instance(tmp_path):
     dataset = "my_dataset"
     schema = "my_schema"
-    region = "euw1"
     tables = ["table1", "table2"]
-    return Storage(dataset, schema, region, tables)
+    return Storage(tmp_path, dataset, schema, tables)
 
 def test_directories_created(storage_instance):
     for table in storage_instance.tables:

@@ -1,16 +1,11 @@
 import json
-import os
 from pathlib import Path
 
 
-DIR_DATASET = lambda dataset, schema, region: f"{os.environ["DIR_ROOT"]}/{dataset}/{schema}/{region}"
-
-
 class Storage:
-    def __init__(self, dataset: str, schema: str, region: str, tables: list[str], file_extension: str = 'json'):
+    def __init__(self, root: str, dataset: str, schema: str, tables: list[str], file_extension: str = 'json'):
         self.schema = schema
-        self.region = region
-        self.root_path = Path(DIR_DATASET(dataset, schema, region))
+        self.root_path = Path(root, dataset, schema)
         self.tables = tables
         self.file_extension = file_extension
 
@@ -26,7 +21,7 @@ class Storage:
     def table_path(self, table_name: str) -> Path:
         return Path(self.root_path, table_name)
     
-    def partition(self, table_name: str, **partition_columns) -> Path:
+    def partition(self, table_name: str, **partition_columns: dict[str, str] | None) -> Path:
         """
         Get the path for a partitioned table using k=v pairs.
         """
@@ -37,17 +32,17 @@ class Storage:
         Path(partition).mkdir(parents=True, exist_ok=True)
         return partition
 
-    def find_file(self, table_name: str, record: str) -> Path:
+    def find_files(self, table_name: str, record: str) -> list[Path]:
         try:
-            return list(self.table_path(table_name).rglob(f"{record}.{self.file_extension}"))[0]
+            return list(self.table_path(table_name).rglob(f"{record}.{self.file_extension}"))
         except IndexError:
-            raise FileNotFoundError(f"File {record}.{self.file_extension} not found in table {table_name}.")
-    
+            raise FileNotFoundError(f"Files {record}.{self.file_extension} not found in table {table_name}.")
+
     def read_file(self, table_name: str, record: str) -> dict:
         """
         Read from raw storage.
         """
-        path = self.find_file(table_name, record)
+        path = self.find_files(table_name, record)[0]
 
         with open(path, 'r') as f:
             if self.file_extension == 'json':
@@ -60,7 +55,7 @@ class Storage:
         table_name: str,
         record: str,
         contents: any,
-        **partition_columns: str,
+        **partition_columns: dict[str, str] | None
     ):
         partition = self.partition(table_name, **partition_columns)
         with open(Path(partition, f"{record}.{self.file_extension}"), 'w') as f:

@@ -1,6 +1,9 @@
+import argparse
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from riot_api import get, worker
+from riot_api import get, workers
+import os
+import storage
+import threading
 
 
 REGIONS_AND_PLATFORMS = {
@@ -23,43 +26,81 @@ REGIONS_AND_PLATFORMS = {
 }
 
 
-async def async_main():
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run data pipeline in RAW or STG mode.")
+    subparsers = parser.add_subparsers(dest="mode", required=True)
+    
+    # Shared arguments
+    def add_common_args(subparser):
+        subparser.add_argument("--key", required=True, help="Riot API key")
+        subparser.add_argument("--root", required=True, help="Root directory for storage")
+
+    # RAW subcommand
+    raw_parser = subparsers.add_parser("raw", help="Run the RAW data pipeline")
+    add_common_args(raw_parser)
+
+    # STG subcommand
+    stg_parser = subparsers.add_parser("stg", help="Run the STG data pipeline")
+    add_common_args(stg_parser)
+    stg_parser.add_argument("--flush", action="store_true", help="Flush staging tables before running")
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    print(f"Mode: {args.mode}")
+    print(f"Root directory: {args.root}")
+    os.environ["RIOT_API_KEY"] = args.key
+    
+    storage_raw = storage.Storage(
+        args.root,
+        'riot-api',
+        'raw',
+        ['player_match_ids', 'match_info', 'match_timeline']
+    )
+    storage_stg = storage.StorageParquet(
+        args.root,
+        'riot-api',
+        'stg',
+        tables=['matches', 'participants', 'events']
+    )
+
     list_of_platforms = [
         (region, platform)
         for region, platforms in REGIONS_AND_PLATFORMS.items()
         for platform in platforms
     ]
-
     regions = REGIONS_AND_PLATFORMS.keys()
+
     dict_of_player_uuids = {
-        region: []
+        region: entry['puuid']
+        for region, platform in list_of_platforms
+        for entry in asyncio.run(
+            get.fetch_with_rate_limit('players', platform=platform)
+        )["entries"]
+    } if args.mode == "raw" else {
+        region: storage_raw.find_files('player_match_ids', f'region={region}/*')
         for region in regions
     }
 
-    # Collect player UUIDs per region/platform pair
-    for region, platform in list_of_platforms:
-        print(f"Fetching challenger players from {region}/{platform}...")
-        players = await get.fetch_with_rate_limit('players', platform=platform)
+    list_of_threads = []
 
-        list_of_players_uuids = [
-            entry['puuid'] for entry in players["entries"]
-        ]
+    for region in regions:
+        print(f"[{region}] Starting thread...")
+        list_of_threads.append(threading.Thread(
+            target=(
+                workers.stg if args.mode == "stg"
+                else lambda *args, **kwargs: asyncio.run(workers.raw(*args, **kwargs))
+            ),
+            args=(region, dict_of_player_uuids[region], storage_raw),
+            kwargs={
+                "storage_stg": storage_stg,
+                "flush": args.flush
+            } if args.mode == "stg" else None
+        ))
         
-        print(f"Got {len(list_of_players_uuids)} players from {region}/{platform}.")
-        dict_of_player_uuids[region].extend(list_of_players_uuids)
-    
-    # Run a region_worker per region
-    with ThreadPoolExecutor(max_workers=len(regions)) as executor:
-        futures = [executor.submit(
-            lambda region, puuids: asyncio.run(worker.region_worker(region, puuids)),
-            region,
-            dict_of_player_uuids[region]
-        ) for region in regions]
+        list_of_threads[-1].start()
 
-        # Wait for all threads to finish
-        for future in futures:
-            future.result()
-            
-
-def main():
-    asyncio.run(async_main())
+    for t in list_of_threads:
+        t.join()
