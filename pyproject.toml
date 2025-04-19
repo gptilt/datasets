@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gptilt-datasets"
+version = "0.1.0"
+readme = "README.md"
+description = "Project for building a collection of League of Legends datasets"
+# license = {file = "LICENSE.txt"}
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp >=3.8.1",
+    "polars >=0.18.0",
+    "pyarrow >= 19.0.1",
+    "requests >= 2.31.0"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest >=2.7.3",
+    "asyncio >=0.26.0",
+]
+
+[project.scripts]
+ds-riot-api = "riot_api.main:main"
+
+[tool.hatch.build]
+include = ["src/**"]
+sources = ["src"]
