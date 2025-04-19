@@ -33,10 +33,10 @@ class Storage:
         return partition
 
     def find_files(self, partition: str, record: str) -> list[Path]:
-        try:
-            return list(partition.rglob(f"{record}.{self.file_extension}"))
-        except IndexError:
-            raise FileNotFoundError(f"Files {record}.{self.file_extension} not found in table {table_name}.")
+        files = list(partition.rglob(f"{record}.{self.file_extension}"))
+        if not files:
+            raise FileNotFoundError(f"No file {record}.{self.file_extension} found in partition.")
+        return files
 
     def read_file(self, table_name: str, record: str, **partition_columns: dict[str, str] | None) -> dict:
         """
