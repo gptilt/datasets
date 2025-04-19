@@ -13,15 +13,23 @@ async def raw(
     semaphore = asyncio.Semaphore(3)  # Tune this to control per-region concurrency
 
     async def process_puuid(puuid, session):
-        async with semaphore:
-            list_of_match_ids = await get.fetch_with_rate_limit(
-                'player_match_ids',
-                session=session,
-                region=region,
-                puuid=puuid,
-                count=50
-            )
-            storage_raw.store_file('player_match_ids', puuid, list_of_match_ids)
+        try:
+            list_of_match_ids = storage_raw.read_file('player_match_ids', record=puuid, region=region)
+        except FileNotFoundError:
+            async with semaphore:
+                list_of_match_ids = await get.fetch_with_rate_limit(
+                    'player_match_ids',
+                    session=session,
+                    region=region,
+                    puuid=puuid,
+                    count=50
+                )
+                storage_raw.store_file(
+                    'player_match_ids',
+                    puuid,
+                    list_of_match_ids,
+                    region=region,
+                )
 
         await asyncio.gather(*[
             process_match(match_id, session) for match_id in list_of_match_ids
@@ -39,8 +47,20 @@ async def raw(
                 'match_timeline', session=session, region=region, match_id=match_id
             )
                 
-        storage_raw.store_file('match_info', match_id, info, yearmonth=transform.yearmonth_from_match(info))
-        storage_raw.store_file('match_timeline', match_id, timeline, yearmonth=transform.yearmonth_from_match(info))
+        storage_raw.store_file(
+            'match_info',
+            match_id,
+            info,
+            region=region,
+            yearmonth=transform.yearmonth_from_match(info)
+        )
+        storage_raw.store_file(
+            'match_timeline',
+            match_id,
+            timeline,
+            region=region,
+            yearmonth=transform.yearmonth_from_match(info)
+        )
 
     async with aiohttp.ClientSession() as session:
         # Fire all puuid tasks at once

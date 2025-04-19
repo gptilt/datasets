@@ -32,17 +32,17 @@ class Storage:
         Path(partition).mkdir(parents=True, exist_ok=True)
         return partition
 
-    def find_files(self, table_name: str, record: str) -> list[Path]:
+    def find_files(self, partition: str, record: str) -> list[Path]:
         try:
-            return list(self.table_path(table_name).rglob(f"{record}.{self.file_extension}"))
+            return list(partition.rglob(f"{record}.{self.file_extension}"))
         except IndexError:
             raise FileNotFoundError(f"Files {record}.{self.file_extension} not found in table {table_name}.")
 
-    def read_file(self, table_name: str, record: str) -> dict:
+    def read_file(self, table_name: str, record: str, **partition_columns: dict[str, str] | None) -> dict:
         """
         Read from raw storage.
         """
-        path = self.find_files(table_name, record)[0]
+        path = self.find_files(self.partition(table_name, **partition_columns), record)[0]
 
         with open(path, 'r') as f:
             if self.file_extension == 'json':

@@ -83,7 +83,7 @@ def main():
             )["entries"]
         ] for region, platform in list_of_platforms
     } if args.mode == "raw" else {
-        region: storage_raw.find_files('player_match_ids', f'region={region}/*')
+        region: storage_raw.read_file('player_match_ids', '*', region=region)
         for region in regions
     }
     print(f"Found {len(dict_of_player_uuids)} player uuids.")
