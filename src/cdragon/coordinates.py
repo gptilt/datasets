@@ -88,7 +88,7 @@ def get_camp_xy():
     }
 
 
-def mirror(center, mirror_from):
+def mirror(center: tuple, mirror_from: tuple) -> tuple:
     """
     Mirrors the coordinates of a point across a center point.
     """

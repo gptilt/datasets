@@ -23,6 +23,7 @@ test = [
 ]
 
 [project.scripts]
+ds-cdragon = "cdragon.main:main"
 ds-riot-api = "riot_api.main:main"
 
 [tool.hatch.build]

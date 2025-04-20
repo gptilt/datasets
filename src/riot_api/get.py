@@ -9,8 +9,8 @@ ENDPOINTS = {
     'players': lambda platform:
         f"{BASE_URL_PLATFORM(platform)}/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5",
 
-    'player_match_ids': lambda region, puuid, count:
-        f"{BASE_URL_REGION(region)}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}",
+    'player_match_ids': lambda region, puuid, queue, type, count:
+        f"{BASE_URL_REGION(region)}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&queue={queue}&type={type}&count={count}",
 
     'match_info': lambda region, match_id:
         f"{BASE_URL_REGION(region)}/lol/match/v5/matches/{match_id}",

@@ -22,6 +22,8 @@ async def raw(
                     session=session,
                     region=region,
                     puuid=puuid,
+                    queue=420,
+                    type='ranked',
                     count=50
                 )
                 storage_raw.store_file(
