@@ -3,6 +3,7 @@ import requests
 
 
 BUILDINGS = {
+    "Locator_Map_Center",
     # Turrets Fountain
     "Turret_OrderTurretShrine",
     "Turret_ChaosTurretShrine",
@@ -74,19 +75,6 @@ def get_building_xy():
         if "name" in obj and obj["name"] in BUILDINGS
     }
 
-def find_top_level_parents_with_key(data: dict, target_key: str) -> list:
-    def contains_key(d):
-        if not isinstance(d, dict):
-            return False
-        if target_key in d:
-            return True
-        return any(contains_key(v) for v in d.values() if isinstance(v, dict))
-
-    result = []
-    for parent_key, subdict in data.items():
-        if isinstance(subdict, dict) and contains_key(subdict):
-            result.append(parent_key)
-    return result
 
 def get_camp_xy():
     response = requests.get('https://raw.communitydragon.org/15.8/game/data/maps/mapgeometry/map11/a22.materials.bin.json')
@@ -98,3 +86,13 @@ def get_camp_xy():
         for obj in map_objects.values()
         if "definition" in obj and "CampName" in obj["definition"]
     }
+
+
+def mirror(center, mirror_from):
+    """
+    Mirrors the coordinates of a point across a center point.
+    """
+    return (
+        2 * center[0] - mirror_from[0],
+        2 * center[1] - mirror_from[1]
+    )
