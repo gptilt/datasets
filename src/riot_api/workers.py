@@ -14,7 +14,7 @@ async def raw(
 
     async def process_puuid(puuid, session):
         try:
-            list_of_match_ids = storage_raw.read_file('player_match_ids', record=puuid, region=region)
+            list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid, region=region)[0]
         except FileNotFoundError:
             async with semaphore:
                 list_of_match_ids = await get.fetch_with_rate_limit(
@@ -77,7 +77,7 @@ def stg(
     flush: bool = True
 ):    
     def process_puuid(puuid: str):
-        list_of_match_ids = storage_raw.read_file('player_match_ids', record=puuid)
+        list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid)
         for match_id in list_of_match_ids:
             process_match(match_id) 
 
@@ -88,8 +88,8 @@ def stg(
             print(f"[{region}] Match {match_id} already exists.")
             return
         
-        info = storage_raw.read_file('match_info', record=match_id)
-        timeline = storage_raw.read_file('match_timeline', record=match_id)
+        info = storage_raw.read_files('match_info', record=match_id)
+        timeline = storage_raw.read_files('match_timeline', record=match_id)
 
         match, participants = transform.match_into_match_and_participants(match_id=match_id, match=info)
         events = transform.timeline_into_events(timeline=timeline)

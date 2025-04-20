@@ -19,6 +19,8 @@ class Storage:
         ) / (1014 ** 3)  # GB
     
     def table_path(self, table_name: str) -> Path:
+        if table_name not in self.tables:
+            raise ValueError(f"Table {table_name} not found in schema {self.schema}.")
         return Path(self.root_path, table_name)
     
     def partition(self, table_name: str, **partition_columns: dict[str, str] | None) -> Path:
@@ -33,23 +35,36 @@ class Storage:
         return partition
 
     def find_files(self, partition: str, record: str) -> list[Path]:
+        print(partition)
         files = list(partition.rglob(f"{record}.{self.file_extension}"))
         if not files:
             raise FileNotFoundError(f"No file {record}.{self.file_extension} found in partition.")
         return files
 
-    def read_file(self, table_name: str, record: str, **partition_columns: dict[str, str] | None) -> dict:
-        """
-        Read from raw storage.
-        """
-        path = self.find_files(self.partition(table_name, **partition_columns), record)[0]
-
+    def load_file(self, path: str) -> dict:
         with open(path, 'r') as f:
             if self.file_extension == 'json':
                 return json.load(f)
             else:
                 raise NotImplementedError(f"Unsupported file extension: {self.file_extension}")
     
+    def read_files(
+        self,
+        table_name: str,
+        record: str,
+        count: int = 1,
+        **partition_columns: dict[str, str] | None
+    ) -> list[dict]:
+        """
+        Read from raw storage.
+        """
+        paths = self.find_files(self.partition(table_name, **partition_columns), record)
+
+        return [
+            self.load_file(path)
+            for path in paths[:count]
+        ]
+
     def store_file(
         self,
         table_name: str,

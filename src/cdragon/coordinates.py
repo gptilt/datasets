@@ -4,6 +4,9 @@ import requests
 
 BUILDINGS = {
     "Locator_Map_Center",
+    # Spawn
+    "OrderSpawnGate",
+    "ChaosSpawnGate",
     # Turrets Fountain
     "Turret_OrderTurretShrine",
     "Turret_ChaosTurretShrine",
@@ -80,12 +83,20 @@ def get_camp_xy():
     response = requests.get('https://raw.communitydragon.org/15.8/game/data/maps/mapgeometry/map11/a22.materials.bin.json')
     materials = json.loads(response.text)
     map_objects = materials["{0395a48a}"]['items']
-    
-    return {
+
+    dict_of_camp_coordinates = {
         obj["definition"]["CampName"]: (obj['transform'][-1][0], obj['transform'][-1][2])
         for obj in map_objects.values()
         if "definition" in obj and "CampName" in obj["definition"]
     }
+    for item in materials["{0cd06aa5}"]["items"].values():
+        if "name" not in item:
+            continue
+        if item["name"] not in ("Atakhan_Spawn1", "Atakhan_Spawn2"):
+            continue
+        dict_of_camp_coordinates[item["name"]] = item["transform"][-1][0], item["transform"][-1][2]
+    
+    return dict_of_camp_coordinates
 
 
 def mirror(center: tuple, mirror_from: tuple) -> tuple:

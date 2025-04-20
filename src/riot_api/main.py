@@ -1,7 +1,7 @@
 import argparse
 import asyncio
-from riot_api import get, workers
 import os
+from riot_api import get, workers
 import storage
 import threading
 
@@ -75,6 +75,7 @@ def main():
 
     # Retrieve player uuids
     print(f"Fetching player uuids from {'Riot API' if args.mode == 'raw' else 'raw'}...")
+
     dict_of_player_uuids = {
         region: [
             entry['puuid']
@@ -83,7 +84,7 @@ def main():
             )["entries"]
         ] for region, platform in list_of_platforms
     } if args.mode == "raw" else {
-        region: storage_raw.read_file('player_match_ids', '*', region=region)
+        region: storage_raw.read_files('player_match_ids', '*', region=region)
         for region in regions
     }
     print(f"Found {len(dict_of_player_uuids)} player uuids.")
