@@ -13,7 +13,7 @@ Alternatively, if you are interested in running the data pipelines yourself, fin
 The match dataset contains all data available in the Riot API for a given set of matches.
 Currently, the dataset can be found in the following sizes:
 
-- [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/riot-match-challenger-10k), includes over 10M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- *SOON* [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/riot-match-challenger-10k), includes over 10M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 - *SOON* `100k` Challenger matches, includes over 100M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 
 This dataset consists of the following tables:
