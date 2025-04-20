@@ -47,7 +47,7 @@ def default_position_from_event_type(
 
     # Else, use spawn coordinates for item events
     spawn_key = (
-        "OrderSpawnGate" if event['participantId'] < 5 else "ChaosSpawnGate"
+        "OrderSpawnGate" if event['participantId'] <= 5 else "ChaosSpawnGate"
     )
     with open('data/cdragon/coordinates/buildings.json', 'r') as f:
         building_coordinates = json.load(f)
