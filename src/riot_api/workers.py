@@ -69,22 +69,19 @@ async def raw(
         )
 
     async with aiohttp.ClientSession() as session:
-        list_of_player_uuids = []
+        list_of_players = []
 
         # Retrieve player uuids
         print(f"Fetching player uuids from Riot API...")
         for platform in platforms:
-            list_of_player_uuids.extend([
-                entry['puuid']
-                for entry in asyncio.run(
-                    get.fetch_with_rate_limit('players', session=session, platform=platform)
-                )["entries"]
-            ])
-        print(f"[{region}] Found {len(list_of_player_uuids)} player uuids.")
+            players = await get.fetch_with_rate_limit('players', session=session, platform=platform)
+            list_of_players.extend(players["entries"])
+            
+        print(f"[{region}] Found {len(list_of_players)} player uuids.")
 
-        random.shuffle(list_of_player_uuids)
-        for puuid in list_of_player_uuids:
-            await process_puuid(puuid, session)
+        random.shuffle(list_of_players)
+        for player in list_of_players:
+            await process_puuid(player["puuid"], session)
 
 
 def stg(
