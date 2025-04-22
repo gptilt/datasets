@@ -1,12 +1,13 @@
 import aiohttp
 import asyncio
+import random
 from storage import Storage, StorageParquet
 from riot_api import get, schema, transform
 
 
 async def raw(
     region: str,
-    list_of_player_uuids: list[str],
+    platforms: set[str],
     storage_raw: Storage,
 ):
     print(f"[{region}] Region worker spawned.")
@@ -68,23 +69,30 @@ async def raw(
         )
 
     async with aiohttp.ClientSession() as session:
+        list_of_player_uuids = []
+
+        # Retrieve player uuids
+        print(f"Fetching player uuids from Riot API...")
+        for platform in platforms:
+            list_of_player_uuids.extend([
+                entry['puuid']
+                for entry in asyncio.run(
+                    get.fetch_with_rate_limit('players', session=session, platform=platform)
+                )["entries"]
+            ])
+        print(f"[{region}] Found {len(list_of_player_uuids)} player uuids.")
+
+        random.shuffle(list_of_player_uuids)
         for puuid in list_of_player_uuids:
             await process_puuid(puuid, session)
 
 
 def stg(
     region: str,
-    list_of_player_uuids: list[str],
     storage_raw: Storage,
     storage_stg: StorageParquet,
     flush: bool = True
-):    
-    def process_puuid(puuid: str):
-        list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid, region=region)
-
-        for match_id in list_of_match_ids:
-            process_match(match_id)
-
+):
     def process_match(match_id):
         print(f"[{region}] Processing match {match_id}...")
 
@@ -111,8 +119,15 @@ def stg(
         storage_stg.store_batch('participants', participants, region=region)
         storage_stg.store_batch('events', events, schema=schema.EVENTS, region=region)
     
-    for puuid in list_of_player_uuids:
-        process_puuid(puuid.name.split('/')[-1].split('.json')[0])
+    list_of_match_ids = storage_raw.find_files(
+        'match_info',
+        record='*',
+        region=region,
+        count=1000
+    )
+
+    for match_id in list_of_match_ids:
+        process_match(match_id)
 
     if flush:
         storage_stg.flush(region=region)

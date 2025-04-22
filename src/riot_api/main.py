@@ -51,8 +51,6 @@ def main():
     args = parse_args()
     print(f"Mode: {args.mode}")
     print(f"Root directory: {args.root}")
-    if args.mode == "raw":
-        os.environ["RIOT_API_KEY"] = args.key
     
     storage_raw = storage.Storage(
         args.root,
@@ -67,47 +65,29 @@ def main():
         tables=['matches', 'participants', 'events']
     )
 
-    list_of_platforms = [
-        (region, platform)
-        for region, platforms in REGIONS_AND_PLATFORMS.items()
-        for platform in platforms
-    ]
-    regions = REGIONS_AND_PLATFORMS.keys()
-
-    # Retrieve player uuids
-    print(f"Fetching player uuids from {'Riot API' if args.mode == 'raw' else 'raw'}...")
-
-    dict_of_player_uuids = {
-        region: [
-            entry['puuid']
-            for entry in asyncio.run(
-                get.fetch_with_rate_limit('players', platform=platform)
-            )["entries"]
-        ] for region, platform in list_of_platforms
-    } if args.mode == "raw" else {
-        region: storage_raw.find_files('player_match_ids', '*', region=region)
-        for region in regions
-    }
-    for region in regions:
-        print(f"[{region}] Found {len(dict_of_player_uuids[region])} player uuids.")
-
     list_of_threads = []
 
-    for region in regions:
-        print(f"[{region}] Starting thread...")
-        list_of_threads.append(threading.Thread(
-            target=(
-                workers.stg if args.mode == "stg"
-                else lambda *args, **kwargs: asyncio.run(workers.raw(*args, **kwargs))
-            ),
-            args=(region, dict_of_player_uuids[region], storage_raw),
-            kwargs={
-                "storage_stg": storage_stg,
-                "flush": args.flush
-            } if args.mode == "stg" else None
-        ))
-        
-        list_of_threads[-1].start()
+    if args.mode == "raw":
+        os.environ["RIOT_API_KEY"] = args.key
+
+        for region in REGIONS_AND_PLATFORMS.keys():
+            print(f"[{region}] Starting thread...")
+            list_of_threads.append(threading.Thread(
+                target=(lambda *args, **kwargs: asyncio.run(workers.raw(*args, **kwargs))),
+                args=(region, REGIONS_AND_PLATFORMS[region], storage_raw),
+                kwargs={}
+            ))
+    elif args.mode == "stg":
+        for region in REGIONS_AND_PLATFORMS.keys():
+            print(f"[{region}] Starting thread...")
+            list_of_threads.append(threading.Thread(
+                target=(workers.stg),
+                args=(region, storage_raw, storage_stg, args.flush),
+                kwargs={}
+            ))
+    
+    for t in list_of_threads:
+        t.start()
 
     for t in list_of_threads:
         t.join()
