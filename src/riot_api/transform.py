@@ -67,14 +67,14 @@ def match_into_match_and_participants(
     for participant in match['info']['participants']:
         participant['matchId'] = match_id
     # Pop before returning, to not store it with match['info'] as well
-    participants = list(match['info'].pop('participants').values())
+    participants = match['info'].pop('participants')
 
     return match['info'], participants
 
 
 def timeline_into_events(
-    participants: list[dict],
     timeline: dict,
+    participants: list[dict],
 ) -> list[dict]:
     # Treat participant frames as events
     list_of_events = [

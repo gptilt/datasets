@@ -10,44 +10,47 @@ async def raw(
     storage_raw: Storage,
 ):
     print(f"[{region}] Region worker spawned.")
-    semaphore = asyncio.Semaphore(3)  # Tune this to control per-region concurrency
 
     async def process_puuid(puuid, session):
         try:
-            list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid, region=region)[0]
+            list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid, region=region)
         except FileNotFoundError:
-            async with semaphore:
-                list_of_match_ids = await get.fetch_with_rate_limit(
-                    'player_match_ids',
-                    session=session,
-                    region=region,
-                    puuid=puuid,
-                    queue=420,
-                    type='ranked',
-                    count=50
+            list_of_match_ids = await get.fetch_with_rate_limit(
+                'player_match_ids',
+                session=session,
+                region=region,
+                puuid=puuid,
+                queue=420,
+                type='ranked',
+                count=50
+            )
+            storage_raw.store_file(
+                'player_match_ids',
+                puuid,
+                list_of_match_ids,
+                region=region,
+            )
+        
+        for match_id in list_of_match_ids:
+            try:
+                storage_raw.find_files_in_tables(
+                    match_id,
+                    ['match_info', 'match_timeline'],
+                    region=region
                 )
-                storage_raw.store_file(
-                    'player_match_ids',
-                    puuid,
-                    list_of_match_ids,
-                    region=region,
-                )
-
-        await asyncio.gather(*[
-            process_match(match_id, session) for match_id in list_of_match_ids
-        ])
+            except FileNotFoundError:
+                await process_match(match_id, session) 
 
     async def process_match(match_id, session):
         print(f"[{region}] Processing match {match_id}...")
 
-        async with semaphore:  # Rate limit bound
-            print(f"[{region}] Fetching {match_id}...")
-            info = await get.fetch_with_rate_limit(
-                'match_info', session=session, region=region, match_id=match_id
-            )
-            timeline = await get.fetch_with_rate_limit(
-                'match_timeline', session=session, region=region, match_id=match_id
-            )
+        print(f"[{region}] Fetching {match_id}...")
+        info = await get.fetch_with_rate_limit(
+            'match_info', session=session, region=region, match_id=match_id
+        )
+        timeline = await get.fetch_with_rate_limit(
+            'match_timeline', session=session, region=region, match_id=match_id
+        )
                 
         storage_raw.store_file(
             'match_info',
@@ -65,8 +68,8 @@ async def raw(
         )
 
     async with aiohttp.ClientSession() as session:
-        # Fire all puuid tasks at once
-        await asyncio.gather(*[process_puuid(puuid, session) for puuid in list_of_player_uuids])
+        for puuid in list_of_player_uuids:
+            await process_puuid(puuid, session)
 
 
 def stg(
@@ -77,9 +80,10 @@ def stg(
     flush: bool = True
 ):    
     def process_puuid(puuid: str):
-        list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid)
+        list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid, region=region)
+
         for match_id in list_of_match_ids:
-            process_match(match_id) 
+            process_match(match_id)
 
     def process_match(match_id):
         print(f"[{region}] Processing match {match_id}...")
@@ -88,11 +92,19 @@ def stg(
             print(f"[{region}] Match {match_id} already exists.")
             return
         
-        info = storage_raw.read_files('match_info', record=match_id)
-        timeline = storage_raw.read_files('match_timeline', record=match_id)
+        try:
+            info = storage_raw.read_files('match_info', record=match_id, region=region)
+        except FileNotFoundError:
+            print(f"[{region}] Match {match_id} not found in raw storage.")
+            return
+        
+        if info["info"]["queueId"] != 420:
+            print(f"[{region}] Match {match_id} is not ranked.")
+            return
+        timeline = storage_raw.read_files('match_timeline', record=match_id, region=region)
 
         match, participants = transform.match_into_match_and_participants(match_id=match_id, match=info)
-        events = transform.timeline_into_events(timeline=timeline)
+        events = transform.timeline_into_events(timeline=timeline, participants=participants)
 
         print(f"[{region}] Storing {match_id}...")
         storage_stg.store_batch('matches', [match], region=region)
@@ -100,7 +112,7 @@ def stg(
         storage_stg.store_batch('events', events, schema=schema.EVENTS, region=region)
     
     for puuid in list_of_player_uuids:
-        process_puuid(puuid)
+        process_puuid(puuid.name.split('/')[-1].split('.json')[0])
 
     if flush:
         storage_stg.flush(region=region)

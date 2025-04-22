@@ -34,11 +34,35 @@ class Storage:
         Path(partition).mkdir(parents=True, exist_ok=True)
         return partition
 
-    def find_files(self, partition: str, record: str) -> list[Path]:
-        print(partition)
+    def find_files(
+        self,
+        table_name: str,
+        record: str,
+        **partition_columns: dict[str, str] | None
+    ) -> list[Path]:
+        partition = self.partition(table_name, **partition_columns)
         files = list(partition.rglob(f"{record}.{self.file_extension}"))
         if not files:
             raise FileNotFoundError(f"No file {record}.{self.file_extension} found in partition.")
+        return files
+    
+    def find_files_in_tables(
+        self,
+        record: str,
+        list_of_tables: list[str],
+        **partition_columns: dict[str, str] | None
+    ) -> list[Path]:
+        """
+        Find files in all tables with the same record name.
+        """
+        files = []
+        for table in list_of_tables:
+            try:
+                files.extend(self.find_files(table, record, **partition_columns))
+            except FileNotFoundError:
+                pass
+        if not files:
+            raise FileNotFoundError(f"No file {record}.{self.file_extension} found in any table.")
         return files
 
     def load_file(self, path: str) -> dict:
@@ -58,12 +82,12 @@ class Storage:
         """
         Read from raw storage.
         """
-        paths = self.find_files(self.partition(table_name, **partition_columns), record)
+        paths = self.find_files(table_name, record, **partition_columns)
 
         return [
             self.load_file(path)
             for path in paths[:count]
-        ]
+        ][0]
 
     def store_file(
         self,
