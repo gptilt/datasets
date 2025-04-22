@@ -81,23 +81,26 @@ def test_store_batch_buffers_and_writes(storage_parquet):
     assert table.column("name").to_pylist()[0] == "Player0"
 
 
-def test_flush_calls_store_batch_with_partition_columns(storage_parquet):
-    # Put dummy data into the buffer
-    table_name = storage_parquet.tables[0]
-    storage_parquet.buffer[table_name] = [{"foo": "bar"}, {"foo": "baz"}]
+def test_flush_writes_and_clears_buffer(storage_parquet, tmp_path):
+    # Don't include 'region' in data, let partitioning logic add it
+    storage_parquet.buffer["games"] = [{"gameId": 1}, {"gameId": 2}]
+    storage_parquet.buffer["players"] = [{"playerId": "abc"}]
 
-    # Mock store_batch so it doesn't actually write
-    storage_parquet.store_batch = MagicMock()
+    # Flush with region partition
+    nbytes = storage_parquet.flush(region="euw")
 
-    # Call flush with a fake partition column
-    storage_parquet.flush(region="europe")
+    assert nbytes > 0
+    assert storage_parquet.buffer["games"] == []
+    assert storage_parquet.buffer["players"] == []
 
-    # Check store_batch was called once with the correct arguments
-    storage_parquet.store_batch.assert_called_once()
-    args, kwargs = storage_parquet.store_batch.call_args
-    assert args[0] == table_name
-    assert isinstance(args[1], pa.Table)
-    assert kwargs == {"region": "europe"}
+    # Validate file creation and content
+    games_path = tmp_path / "gptilt/match_v5/games/region=euw"
+    players_path = tmp_path / "gptilt/match_v5/players/region=euw"
 
-    # After flush, buffer should be empty
-    assert storage_parquet.buffer[table_name] == []
+    assert any(f.suffix == ".parquet" for f in games_path.iterdir())
+    assert any(f.suffix == ".parquet" for f in players_path.iterdir())
+
+    table = pq.read_table(next(games_path.glob("*.parquet")))
+    assert table.num_rows == 2
+    assert set(table.column_names) == {"gameId", "region"}
+    assert table.column("region").to_pylist() == ["euw", "euw"]

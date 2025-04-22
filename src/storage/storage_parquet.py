@@ -1,7 +1,7 @@
 import pyarrow as pa
 import pyarrow.dataset as ds
 from storage import Storage
-import ulid
+from tqdm import tqdm
 
 
 class StorageParquet(Storage):
@@ -75,55 +75,59 @@ class StorageParquet(Storage):
         list_of_records: list[dict],
         schema: pa.Schema | None = None,
         **partition_columns: dict[str, str] | None,
-    ):
+    ) -> int:
         """
         Write a batch of data to the dataset.
+        If the table is of insufficient size,
+        save it to the buffer instead.
         """
-        if table_name not in self.buffer:
-            self.buffer[table_name] = list_of_records
+        table = self.paTable_from_list_of_records(list_of_records, schema)
+        
+        if table.nbytes >= self.target_batch_size:
+            nbytes = self.write_to_dataset(table_name, table, **partition_columns)
+            return nbytes
         else:
             self.buffer[table_name].extend(list_of_records)
+            return 0
 
-        if (
-            # Sparse check to minimize overhead
-            len(self.buffer[table_name]) % 100 < len(list_of_records) ** 0.2
-        ):
-            table = self.paTable_from_list_of_records(self.buffer[table_name], schema)
-                
-            buffer_size = table.nbytes
 
-            if buffer_size >= self.target_batch_size:
-                self.write_to_dataset(table_name, table, **partition_columns)
-                self.buffer[table_name] = []
-                print(f"[{table_name}] Records saved to storage.")
-            else:
-                print(f"[{table_name}] Buffer size is {buffer_size / 1e6:.2f}MB.")
-    
-    def flush(self, **partition_columns: dict[str, str] | None):
+    def flush(self, **partition_columns: dict[str, str] | None) -> int:
         """
         Write any remaining buffered records to disk.
         Should be called explicitly after processing is complete.
         """
+        nbytes = 0
+        
         for table_name, buffered_records in self.buffer.items():
             if buffered_records:
                 table = pa.Table.from_pylist(buffered_records)
-                self.store_batch(table_name, table, **partition_columns)
+                nbytes += self.write_to_dataset(table_name, table, **partition_columns)
                 self.buffer[table_name] = []
+        
+        return nbytes
 
-    def write_to_dataset(self, table_name: str, table: pa.Table, **partition_columns: str | None):
-        # Add partition columns to the table
+    def write_to_dataset(
+        self,
+        table_name: str,
+        table: pa.Table,
+        **partition_columns: str | None
+    ) -> int:
+        """
+        Add partition columns to the table and write it to the dataset.
+        """
         for col_name, col_value in partition_columns.items():
             if col_value is not None:
                 col_array = pa.array([col_value] * len(table))
                 table = table.append_column(col_name, col_array)
-
+        
         ds.write_dataset(
             data=table,
             base_dir=self.table_path(table_name),
-            basename_template=f"part-{ulid.new()}{'{i}'}parquet",
+            # basename_template=f"part-{ulid.new()}{'{i}'}parquet",
             existing_data_behavior="overwrite_or_ignore",
             format="parquet",
             partitioning=list(partition_columns.keys()) if partition_columns else None,
             partitioning_flavor="hive",
         )
-        print(f"Wrote {len(table)} rows to {table}, size: {table.nbytes / 1e6:.2f}MB")
+        
+        return table.nbytes

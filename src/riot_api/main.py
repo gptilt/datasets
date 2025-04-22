@@ -1,8 +1,7 @@
 import argparse
 import asyncio
 import os
-from riot_api import get, workers
-import storage
+from riot_api import workers
 import threading
 
 
@@ -43,6 +42,7 @@ def parse_args():
     stg_parser = subparsers.add_parser("stg", help="Run the STG data pipeline")
     add_common_args(stg_parser)
     stg_parser.add_argument("--flush", action="store_true", help="Flush staging tables before running")
+    stg_parser.add_argument("--count", help="Number of games to process", type=int, default=10000)
 
     return parser.parse_args()
 
@@ -51,19 +51,6 @@ def main():
     args = parse_args()
     print(f"Mode: {args.mode}")
     print(f"Root directory: {args.root}")
-    
-    storage_raw = storage.Storage(
-        args.root,
-        'riot-api',
-        'raw',
-        ['player_match_ids', 'match_info', 'match_timeline']
-    )
-    storage_stg = storage.StorageParquet(
-        args.root,
-        'riot-api',
-        'stg',
-        tables=['matches', 'participants', 'events']
-    )
 
     list_of_threads = []
 
@@ -74,7 +61,7 @@ def main():
             print(f"[{region}] Starting thread...")
             list_of_threads.append(threading.Thread(
                 target=(lambda *args, **kwargs: asyncio.run(workers.raw(*args, **kwargs))),
-                args=(region, REGIONS_AND_PLATFORMS[region], storage_raw),
+                args=(region, REGIONS_AND_PLATFORMS[region], args.root),
                 kwargs={}
             ))
     elif args.mode == "stg":
@@ -82,8 +69,11 @@ def main():
             print(f"[{region}] Starting thread...")
             list_of_threads.append(threading.Thread(
                 target=(workers.stg),
-                args=(region, storage_raw, storage_stg, args.flush),
-                kwargs={}
+                args=(region, args.root),
+                kwargs={
+                    "count": args.count // len(REGIONS_AND_PLATFORMS.keys()),
+                    "flush": args.flush,
+                }
             ))
     
     for t in list_of_threads:

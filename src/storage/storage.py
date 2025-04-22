@@ -20,7 +20,7 @@ class Storage:
     
     def table_path(self, table_name: str) -> Path:
         if table_name not in self.tables:
-            raise ValueError(f"Table {table_name} not found in schema {self.schema}.")
+            raise FileNotFoundError(f"Table {table_name} not found in schema {self.schema}.")
         return Path(self.root_path, table_name)
     
     def partition(self, table_name: str, **partition_columns: dict[str, str] | None) -> Path:
@@ -38,13 +38,14 @@ class Storage:
         self,
         table_name: str,
         record: str,
+        count: int = 1,
         **partition_columns: dict[str, str] | None
     ) -> list[Path]:
         partition = self.partition(table_name, **partition_columns)
         files = list(partition.rglob(f"{record}.{self.file_extension}"))
         if not files:
             raise FileNotFoundError(f"No file {record}.{self.file_extension} found in partition.")
-        return files
+        return files[:count if count > 0 else None]  # -1 returns all files
     
     def find_files_in_tables(
         self,
@@ -58,7 +59,7 @@ class Storage:
         files = []
         for table in list_of_tables:
             try:
-                files.extend(self.find_files(table, record, **partition_columns))
+                files.extend(self.find_files(table, record, count=-1, **partition_columns))
             except FileNotFoundError:
                 pass
         if not files:
@@ -82,11 +83,11 @@ class Storage:
         """
         Read from raw storage.
         """
-        paths = self.find_files(table_name, record, **partition_columns)
+        paths = self.find_files(table_name, record, count, **partition_columns)
 
         return [
             self.load_file(path)
-            for path in paths[:count]
+            for path in paths
         ][0]
 
     def store_file(
