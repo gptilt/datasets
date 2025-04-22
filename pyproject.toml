@@ -14,7 +14,7 @@ dependencies = [
     "polars >=0.18.0",
     "pyarrow >= 19.0.1",
     "requests >= 2.31.0",
-    "ulid-py >= 1.1.0"
+    "tqdm >= 4.65.0",
 ]
 
 [project.optional-dependencies]

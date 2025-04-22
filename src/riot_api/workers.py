@@ -1,16 +1,30 @@
 import aiohttp
-import asyncio
 import random
-from storage import Storage, StorageParquet
 from riot_api import get, schema, transform
+import storage
+from tqdm import tqdm
+
+
+def tqdm_range(
+    iterable,
+    desc: str = "",
+    category_width: int = 12,
+):
+    return tqdm(range(len(iterable)), desc=f"[{desc}]".ljust(category_width) + "Processing matches")
 
 
 async def raw(
     region: str,
     platforms: set[str],
-    storage_raw: Storage,
+    root: str,
 ):
-    print(f"[{region}] Region worker spawned.")
+    storage_raw = storage.Storage(
+        root,
+        'riot-api',
+        'raw',
+        ['player_match_ids', 'match_info', 'match_timeline']
+    )
+    tqdm.write(f"[{region}] Region worker spawned.")
 
     async def process_puuid(puuid, session):
         try:
@@ -43,9 +57,9 @@ async def raw(
                 await process_match(match_id, session) 
 
     async def process_match(match_id, session):
-        print(f"[{region}] Processing match {match_id}...")
+        tqdm.write(f"[{region}] Processing match {match_id}...")
 
-        print(f"[{region}] Fetching {match_id}...")
+        tqdm.write(f"[{region}] Fetching {match_id}...")
         info = await get.fetch_with_rate_limit(
             'match_info', session=session, region=region, match_id=match_id
         )
@@ -72,59 +86,80 @@ async def raw(
         list_of_players = []
 
         # Retrieve player uuids
-        print(f"Fetching player uuids from Riot API...")
+        tqdm.write(f"Fetching player uuids from Riot API...")
         for platform in platforms:
             players = await get.fetch_with_rate_limit('players', session=session, platform=platform)
             list_of_players.extend(players["entries"])
-            
-        print(f"[{region}] Found {len(list_of_players)} player uuids.")
+
+        tqdm.write(f"[{region}] Found {len(list_of_players)} player uuids.")
 
         random.shuffle(list_of_players)
-        for player in list_of_players:
-            await process_puuid(player["puuid"], session)
+        for i in tqdm_range(list_of_players, desc=region):
+            await process_puuid(list_of_players[i]["puuid"], session)
 
 
 def stg(
     region: str,
-    storage_raw: Storage,
-    storage_stg: StorageParquet,
-    flush: bool = True
+    root: str,
+    count: int = 1000,
+    flush: bool = True,
 ):
-    def process_match(match_id):
-        print(f"[{region}] Processing match {match_id}...")
+    storage_raw = storage.Storage(
+        root,
+        'riot-api',
+        'raw',
+        ['player_match_ids', 'match_info', 'match_timeline']
+    )
+    storage_stg = storage.StorageParquet(
+        root,
+        'riot-api',
+        'stg',
+        tables=['matches', 'participants', 'events']
+    )
+
+    def process_match(match_id: str) -> tuple[dict, list[dict], list[dict]]:
+        tqdm.write(f"[{region}] Processing match {match_id}...")
 
         if storage_stg.has_records_in_all_tables(matchId=match_id):
-            print(f"[{region}] Match {match_id} already exists.")
+            tqdm.write(f"[{region}] Match {match_id} already exists.")
             return
         
         try:
             info = storage_raw.read_files('match_info', record=match_id, region=region)
         except FileNotFoundError:
-            print(f"[{region}] Match {match_id} not found in raw storage.")
+            tqdm.write(f"[{region}] Match {match_id} not found in raw storage.")
             return
         
         if info["info"]["queueId"] != 420:
-            print(f"[{region}] Match {match_id} is not ranked.")
+            tqdm.write(f"[{region}] Match {match_id} is not ranked.")
             return
         timeline = storage_raw.read_files('match_timeline', record=match_id, region=region)
 
         match, participants = transform.match_into_match_and_participants(match_id=match_id, match=info)
         events = transform.timeline_into_events(timeline=timeline, participants=participants)
 
-        print(f"[{region}] Storing {match_id}...")
-        storage_stg.store_batch('matches', [match], region=region)
-        storage_stg.store_batch('participants', participants, region=region)
-        storage_stg.store_batch('events', events, schema=schema.EVENTS, region=region)
-    
+        return match, participants, events
+        
     list_of_match_ids = storage_raw.find_files(
         'match_info',
         record='*',
         region=region,
-        count=1000
+        count=count
     )
 
-    for match_id in list_of_match_ids:
-        process_match(match_id)
+    matches, participants, events = [], [], []
+
+    for i in tqdm_range(list_of_match_ids, desc=region):
+        data = process_match(list_of_match_ids[i].name.split('/')[-1].split('.json')[0])
+        if data:
+            matches.append(data[0])
+            participants.extend(data[1])
+            events.extend(data[2])
+         
+    tqdm.write(f"[{region}] Storing {len(matches)} matches...")
+    storage_stg.store_batch('matches', matches, region=region)
+    storage_stg.store_batch('participants', participants, region=region)
+    storage_stg.store_batch('events', events, schema=schema.EVENTS, region=region)
 
     if flush:
         storage_stg.flush(region=region)
