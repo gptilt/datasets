@@ -11,6 +11,8 @@ description = "Project for building a collection of League of Legends datasets"
 requires-python = ">=3.11"
 dependencies = [
     "aiohttp >=3.8.1",
+    "huggingface-hub >= 0.30.2",
+    "Jinja2 >= 3.1.6",
     "polars >=0.18.0",
     "pyarrow >= 19.0.1",
     "requests >= 2.31.0",
@@ -19,12 +21,13 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest >=2.7.3",
     "asyncio >=0.26.0",
+    "pytest >=2.7.3",
 ]
 
 [project.scripts]
 ds-cdragon = "cdragon.main:main"
+ds-hf = "hugging_face.main:main"
 ds-riot-api = "riot_api.main:main"
 
 [tool.hatch.build]
