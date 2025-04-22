@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import os
+from tqdm import tqdm
 
 
 BASE_URL_REGION = lambda region: f"https://{region}.api.riotgames.com"
@@ -38,7 +39,7 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
             async with session.get(url, headers={"X-Riot-Token": os.getenv("RIOT_API_KEY")}) as response:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", 30))
-                    print(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")
+                    tqdm.write(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")
                     await asyncio.sleep(retry_after)
                     continue
                 elif response.status != 200:
