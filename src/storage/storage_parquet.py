@@ -1,7 +1,7 @@
 import pyarrow as pa
-import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 from storage import Storage
+import ulid
 
 
 class StorageParquet(Storage):
@@ -120,7 +120,10 @@ class StorageParquet(Storage):
         ds.write_dataset(
             data=table,
             base_dir=self.table_path(table_name),
+            basename_template=f"part-{ulid.new()}{'{i}'}parquet",
+            existing_data_behavior="overwrite_or_ignore",
             format="parquet",
             partitioning=list(partition_columns.keys()) if partition_columns else None,
+            partitioning_flavor="hive",
         )
         print(f"Wrote {len(table)} rows to {table}, size: {table.nbytes / 1e6:.2f}MB")
