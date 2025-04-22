@@ -42,6 +42,10 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
                     tqdm.write(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")
                     await asyncio.sleep(retry_after)
                     continue
+                elif response.status == 504:
+                    tqdm.write(f"[GATEWAY TIMEOUT] {endpoint} - retrying...")
+                    await asyncio.sleep(5)
+                    continue
                 elif response.status != 200:
                     raise Exception(f"Error {response.status} on {url}")
                 return await response.json()
