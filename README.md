@@ -13,8 +13,8 @@ Alternatively, if you are interested in running the data pipelines yourself, fin
 The match dataset contains all data available in the Riot API for a given set of matches.
 Currently, the dataset can be found in the following sizes:
 
-- *SOON* [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/riot-match-challenger-10k), includes over 10M events from ranked matches with at least one challenger player. The 10 largest regions are included.
-- *SOON* `100k` Challenger matches, includes over 100M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- *SOON* [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/riot-match-challenger-10k), includes over 20M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- *SOON* `100k` Challenger matches, includes over 200M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 
 This dataset consists of the following tables:
 
@@ -45,3 +45,24 @@ If no production key is available, the entire ETL process for building the datas
 
 A thread is spawned per platform, to ensure asyncio tasks from different platforms are managed independently, because rate limits are applied on a per-region basis.
 From each thread, every API call is ran as a coroutine.
+
+### Useful Commands
+
+#### Count number of ranked matches in raw
+
+```bash
+grep -rnw "${DATASET_ROOT}/riot-api/raw/match_info" -e 'queueId": 420' | wc -l
+```
+
+#### Count number of events in raw
+
+```bash
+# Find all ranked matches
+grep -rl '"queueId": 420' "${DATASET_ROOT}/riot-api/raw/match_info" \
+  | xargs -I{} basename {} \
+  # Find the corresponding timelines
+  | xargs -I{} find "${DATASET_ROOT}/riot-api/raw/match_timeline" -name {} \
+  # Get all occurrences of "type"
+  | xargs grep -o '"type"' \
+  | wc -l
+```
