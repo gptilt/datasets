@@ -32,11 +32,11 @@ def parse_args():
     
     # Shared arguments
     def add_common_args(subparser):
-        subparser.add_argument("--key", required=True, help="Riot API key")
         subparser.add_argument("--root", required=True, help="Root directory for storage")
 
     # RAW subcommand
     raw_parser = subparsers.add_parser("raw", help="Run the RAW data pipeline")
+    raw_parser.add_argument("--key", required=True, help="Riot API key")
     add_common_args(raw_parser)
 
     # STG subcommand
@@ -51,7 +51,8 @@ def main():
     args = parse_args()
     print(f"Mode: {args.mode}")
     print(f"Root directory: {args.root}")
-    os.environ["RIOT_API_KEY"] = args.key
+    if args.mode == "raw":
+        os.environ["RIOT_API_KEY"] = args.key
     
     storage_raw = storage.Storage(
         args.root,
@@ -84,10 +85,11 @@ def main():
             )["entries"]
         ] for region, platform in list_of_platforms
     } if args.mode == "raw" else {
-        region: storage_raw.read_files('player_match_ids', '*', region=region)
+        region: storage_raw.find_files('player_match_ids', '*', region=region)
         for region in regions
     }
-    print(f"Found {len(dict_of_player_uuids)} player uuids.")
+    for region in regions:
+        print(f"[{region}] Found {len(dict_of_player_uuids[region])} player uuids.")
 
     list_of_threads = []
 
