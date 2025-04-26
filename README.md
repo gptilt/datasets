@@ -24,12 +24,6 @@ This dataset consists of the following tables:
 
 All match tables have a `matchId` column, making it possible to join tables with data from different regions without conflict (the `gameId` column, on the other hand, is not unique across regions).
 
-## License
-
-All datasets are licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
-
-GPTilt isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
-
 ## Getting Started
 
 If you'd rather do things yourself, you must clone the repository, open a terminal inside the newly created directory, create and activate a Python virtual environment, and run `pip install .` inside the cloned repository.
@@ -66,3 +60,13 @@ grep -rl '"queueId": 420' "${DATASET_ROOT}/riot-api/raw/match_info" \
   | xargs grep -o '"type"' \
   | wc -l
 ```
+
+## Contributing
+
+Contributions are welcome! If you have ideas for new utilities, find bugs, or want to improve existing code, please feel free to open an issue or submit a pull request on the GitHub repository. 
+
+## License
+
+All datasets are licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
+
+GPTilt isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
