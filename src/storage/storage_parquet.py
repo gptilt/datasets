@@ -1,7 +1,8 @@
+from common import print
+import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as ds
 from storage import Storage
-from tqdm import tqdm
 
 
 class StorageParquet(Storage):
@@ -91,7 +92,11 @@ class StorageParquet(Storage):
             return 0
 
 
-    def flush(self, **partition_columns: dict[str, str] | None) -> int:
+    def flush(
+        self,
+        dict_of_table_schema: dict[str, pa.Schema] = {},
+        **partition_columns: dict[str, str] | None
+    ) -> int:
         """
         Write any remaining buffered records to disk.
         Should be called explicitly after processing is complete.
@@ -100,7 +105,7 @@ class StorageParquet(Storage):
         
         for table_name, buffered_records in self.buffer.items():
             if buffered_records:
-                table = pa.Table.from_pylist(buffered_records)
+                table = self.paTable_from_list_of_records(buffered_records, dict_of_table_schema.get(table_name))
                 nbytes += self.write_to_dataset(table_name, table, **partition_columns)
                 self.buffer[table_name] = []
         
@@ -110,7 +115,7 @@ class StorageParquet(Storage):
         self,
         table_name: str,
         table: pa.Table,
-        **partition_columns: str | None
+        **partition_columns: dict[str, str] | None
     ) -> int:
         """
         Add partition columns to the table and write it to the dataset.
@@ -131,3 +136,74 @@ class StorageParquet(Storage):
         )
         
         return table.nbytes
+
+    def load_to_polars(
+        self,
+        table_name: str,
+        columns: list[str] | None = None,
+        **partition_filters: str | None
+    ) -> pl.DataFrame:
+        """
+        Loads a partitioned Parquet dataset into a Polars DataFrame,
+        optionally filtering by partition values and selecting columns.
+
+        Args:
+            table_name (str): The name of the table to load.
+            columns (list[str], optional): List of columns to select.
+                If None, selects all columns. Defaults to None.
+            **partition_filters (str, optional): Keyword arguments representing
+                partition columns and their desired values for filtering.
+        Returns:
+            pl.DataFrame: The Polars DataFrame containing the loaded and filtered data.
+                Returns an empty DataFrame if the dataset or specified
+                partitions do not exist or if an error occurs.
+        """
+        table_base_path = self.table_path(table_name)
+        print(f"Attempting to load table '{table_name}' from: {table_base_path}")
+
+        try:
+            lazy_df = pl.scan_parquet(
+                f"{str(table_base_path)}/**/*.parquet",
+                hive_partitioning=True,
+            )
+        except FileNotFoundError:
+            print(f"No parquet files found for table '{table_name}' at {table_base_path}.")
+            return pl.DataFrame()
+
+        # Apply partition filters
+        if partition_filters:
+            print(f"Applying partition filters: {partition_filters}")
+            for col, value in partition_filters.items():
+                if value is None:
+                    print(f"Warning: Skipping filter for column '{col}' with None value.")
+                    continue
+                try:
+                    lazy_df = lazy_df.filter(pl.col(col) == str(value))
+                except pl.exceptions.ColumnNotFoundError:
+                    print(f"Warning: Partition column '{col}' not found in schema. Skipping filter.")
+
+        # Apply column selection
+        if columns:
+            print(f"Selecting columns: {columns}")
+            select_cols = columns.copy()
+            schema_names = lazy_df.collect_schema().names()
+
+            for p_col in (partition_filters or {}):
+                if p_col not in select_cols and p_col in schema_names:
+                    select_cols.append(p_col)
+
+            try:
+                lazy_df = lazy_df.select(select_cols)
+            except pl.exceptions.ColumnNotFoundError as e:
+                print(f"Error selecting columns: {e}. Returning empty DataFrame.")
+                return pl.DataFrame()
+
+        # Collect the result
+        print(f"Collecting data for '{table_name}'...")
+        try:
+            df = lazy_df.collect()
+            print(f"Loaded DataFrame with shape: {df.shape}")
+            return df
+        except Exception as e:
+            print(f"Failed to collect dataset for table '{table_name}': {e}")
+            return pl.DataFrame()

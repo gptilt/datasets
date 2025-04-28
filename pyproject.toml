@@ -14,9 +14,11 @@ dependencies = [
     "dorans >= 0.2.2",
     "huggingface-hub >= 0.30.2",
     "Jinja2 >= 3.1.6",
-    "polars >=0.18.0",
+    "matplotlib >= 3.10.1",
+    "polars >= 1.27.0",
     "pyarrow >= 19.0.1",
     "requests >= 2.31.0",
+    "scikit-learn >= 1.6.1",
     "tqdm >= 4.65.0",
 ]
 
@@ -30,6 +32,7 @@ test = [
 ds-cdragon = "cdragon.main:main"
 ds-hf = "hugging_face.main:main"
 ds-riot-api = "riot_api.main:main"
+ds-tables = "tables.main:main"
 
 [tool.hatch.build]
 include = ["src/**"]

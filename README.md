@@ -28,10 +28,35 @@ All match tables have a `matchId` column, making it possible to join tables with
 
 If you'd rather do things yourself, you must clone the repository, open a terminal inside the newly created directory, create and activate a Python virtual environment, and run `pip install .` inside the cloned repository.
 
-Then, you'll be able to use the following commands:
+Then, you'll be able to use the CLI.
 
-- `ds-cdragon`: Gets data from the [CommunityDragon](https://communitydragon.org/) CDN, namely, coordinates for all structures and jungle camps. This will be needed to enrich the [Match dataset](#match).
-- `ds-riot-api`: Has two subcommands, `raw` and `stg`. Both require the parameters `--key` and `--root`, that specify the Riot API Key, and the storage root directory, respectively. Additionally, `stg` also admits the flag option `--flush`, which forces it to write to disk even if a table's partition is smaller than 1GB.
+### `ds-cdragon`
+
+Gets data from the [CommunityDragon](https://communitydragon.org/) CDN, namely, coordinates for all structures and jungle camps. This will be needed to enrich the [Match dataset](#match).
+
+### `ds-riot-api`
+
+Requires the parameters `--key` and `--root`, that specify the Riot API Key, and the storage root directory, respectively.
+
+Example usage:
+
+```bash
+ds-riot-api \
+  --root $DATASET_ROOT \
+  --key $RIOT_API_KEY
+```
+
+### `ds-tables`
+
+Runs ETL pipelines for the specified table. Requires specifying a schema first (`base` or `gold`). Admits the flag option `--flush`, which forces it to write to disk even if a table's partition is smaller than 1GB.
+
+Example usage:
+
+```bash
+ds-tables base riot-api \
+  --root $DATASET_ROOT \
+  --flush --count 10000
+```
 
 ### Riot API
 
@@ -46,19 +71,6 @@ From each thread, every API call is ran as a coroutine.
 
 ```bash
 grep -rnw "${DATASET_ROOT}/riot-api/raw/match_info" -e 'queueId": 420' | wc -l
-```
-
-#### Count number of events in raw
-
-```bash
-# Find all ranked matches
-grep -rl '"queueId": 420' "${DATASET_ROOT}/riot-api/raw/match_info" \
-  | xargs -I{} basename {} \
-  # Find the corresponding timelines
-  | xargs -I{} find "${DATASET_ROOT}/riot-api/raw/match_timeline" -name {} \
-  # Get all occurrences of "type"
-  | xargs grep -o '"type"' \
-  | wc -l
 ```
 
 ## Contributing

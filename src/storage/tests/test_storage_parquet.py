@@ -1,16 +1,35 @@
+import polars as pl
 import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
 from storage import StorageParquet
-from unittest.mock import MagicMock
 
 
 @pytest.fixture
-def storage_parquet(tmp_path):
+def sample_partitioned_parquet(tmp_path):
+    """Create a small hive-partitioned Parquet dataset."""
+    base_path = tmp_path / "gptilt" / "match_v5" / "players"
+    europe_path = base_path / "region=europe"
+    europe_path.mkdir(parents=True)
+
+    # Create dummy data
+    europe_df = pl.DataFrame({
+        "id": [1, 2],
+        "name": ["Alice", "Bob"]
+    })
+
+    # Save as partitioned Parquet
+    europe_df.write_parquet(europe_path / "data.parquet")
+
+    return tmp_path
+
+
+@pytest.fixture
+def storage_parquet(sample_partitioned_parquet):
     dataset = "gptilt"
     schema = "match_v5"
     tables = ["games", "players"]
-    return StorageParquet(tmp_path, dataset, schema, tables)
+    return StorageParquet(sample_partitioned_parquet, dataset, schema, tables)
 
 
 def test_initialization_defaults(storage_parquet):
@@ -104,3 +123,19 @@ def test_flush_writes_and_clears_buffer(storage_parquet, tmp_path):
     assert table.num_rows == 2
     assert set(table.column_names) == {"gameId", "region"}
     assert table.column("region").to_pylist() == ["euw", "euw"]
+
+
+def test_load_to_polars_with_partition_filter(storage_parquet):
+    # Load only europe region
+    df = storage_parquet.load_to_polars("players", ["name"], region="europe")
+
+    assert df.shape[0] == 2
+    assert "name" in df.columns
+    assert df["name"].to_list() == ["Alice", "Bob"]
+
+
+def test_load_to_polars_with_nonexistent_partition(storage_parquet):
+    # Try to load a region that doesn't exist
+    df = storage_parquet.load_to_polars("players", region="asia")
+
+    assert df.is_empty(), "Expected an empty DataFrame for nonexistent partition."

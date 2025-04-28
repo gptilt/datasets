@@ -3,5 +3,5 @@
 __pycache__
 .pytest_cache
 output
-teste.py
+sandbox.py
 venv
