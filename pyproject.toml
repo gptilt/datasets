@@ -11,14 +11,13 @@ description = "Project for building a collection of League of Legends datasets"
 requires-python = ">=3.11"
 dependencies = [
     "aiohttp >=3.8.1",
-    "dorans >= 0.2.2",
+    "dorans >= 0.2.5",
     "huggingface-hub >= 0.30.2",
     "Jinja2 >= 3.1.6",
     "matplotlib >= 3.10.1",
     "polars >= 1.27.0",
     "pyarrow >= 19.0.1",
     "requests >= 2.31.0",
-    "scikit-learn >= 1.6.1",
     "tqdm >= 4.65.0",
 ]
 
@@ -26,6 +25,11 @@ dependencies = [
 test = [
     "asyncio >=0.26.0",
     "pytest >=2.7.3",
+]
+analysis = [
+    "scikit-learn >= 1.6.1",
+    "seaborn >= 0.13.2",
+    "statsmodels >= 0.14.4"
 ]
 
 [project.scripts]
