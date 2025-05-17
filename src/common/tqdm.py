@@ -1,6 +1,6 @@
 from tqdm import tqdm
 
-print = tqdm.write
+print = lambda x: tqdm.write(str(x))
 
 def tqdm_range(
     iterable,
