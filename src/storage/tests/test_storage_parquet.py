@@ -139,3 +139,23 @@ def test_load_to_polars_with_nonexistent_partition(storage_parquet):
     df = storage_parquet.load_to_polars("players", region="asia")
 
     assert df.is_empty(), "Expected an empty DataFrame for nonexistent partition."
+
+
+def test_store_polars_writes_partitioned_file(storage_parquet):
+    df = pl.DataFrame({
+        "summoner_id": ["x1", "x2"],
+        "kills": [5, 6],
+    })
+
+    nbytes = storage_parquet.store_polars("players", df, region="euw")
+
+    assert nbytes > 0
+
+    partition_dir = storage_parquet.table_path("players") / "region=euw"
+    assert partition_dir.exists(), "Expected partition directory to exist"
+
+    output_files = list(partition_dir.glob("*.parquet"))
+    assert len(output_files) == 1
+
+    table = pq.read_table(output_files[0])
+    assert table.column("region").to_pylist() == ["euw", "euw"]

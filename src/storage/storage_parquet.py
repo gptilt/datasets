@@ -125,6 +125,8 @@ class StorageParquet(Storage):
                 col_array = pa.array([col_value] * len(table))
                 table = table.append_column(col_name, col_array)
         
+        print(f"Dataset schema: {table.schema}")
+
         ds.write_dataset(
             data=table,
             base_dir=self.table_path(table_name),
@@ -207,3 +209,29 @@ class StorageParquet(Storage):
         except Exception as e:
             print(f"Failed to collect dataset for table '{table_name}': {e}")
             return pl.DataFrame()
+
+
+    def store_polars(
+        self,
+        table_name: str,
+        df: pl.DataFrame,
+        **partition_columns: str | None,
+    ) -> int:
+        """
+        Write a Polars DataFrame to the dataset as a Parquet file,
+        converting it to an Arrow Table and applying partitioning if needed.
+
+        Args:
+            table_name (str): The name of the table to write to.
+            df (pl.DataFrame): The Polars DataFrame to write.
+            **partition_columns (str, optional): Columns to partition by.
+
+        Returns:
+            int: Number of bytes written.
+        """
+        if df.is_empty():
+            print(f"Skipping write for empty DataFrame to table '{table_name}'")
+            return 0
+
+        table = df.to_arrow()
+        return self.write_to_dataset(table_name, table, **partition_columns)
