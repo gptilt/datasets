@@ -8,6 +8,7 @@ def main(
     root: str,
     count: int = 1000,
     flush: bool = True,
+    overwrite: bool = False,
 ):
     storage_raw = storage.Storage(
         root,
@@ -18,14 +19,14 @@ def main(
     storage_base = storage.StorageParquet(
         root,
         'tables',
-        'base',
+        'silver',
         tables=['matches', 'participants', 'events']
     )
 
     def process_match(match_id: str) -> tuple[dict, list[dict], list[dict]]:
         print(f"[{region}] Processing match {match_id}...")
 
-        if storage_base.has_records_in_all_tables(matchId=match_id):
+        if not overwrite and storage_base.has_records_in_all_tables(matchId=match_id):
             print(f"[{region}] Match {match_id} already exists.")
             return
         
@@ -49,17 +50,21 @@ def main(
         'match_info',
         record='*',
         region=region,
-        count=count
+        count=int(count * 1.5)
     )
 
     matches, participants, events = [], [], []
 
+    real_count = 0
     for i in tqdm_range(list_of_match_ids, desc=region):
+        if real_count == count:
+            continue
         data = process_match(list_of_match_ids[i].name.split('/')[-1].split('.json')[0])
         if data:
             matches.append(data[0])
             participants.extend(data[1])
             events.extend(data[2])
+            real_count += 1
          
     print(f"[{region}] Storing {len(matches)} matches...")
     storage_base.store_batch('matches', matches, region=region)

@@ -1,3 +1,4 @@
+from dorans import death
 import json
 
 
@@ -5,9 +6,11 @@ def find_closest_event(
     event: dict,
     list_of_events: list[dict],
     **event_filters: dict,
-) -> dict | None:
+) -> list[dict] | None:
     """
     Find the closest event in the list of events.
+    Provided a dictionary of event filters,
+    it will filter the events based on the filters.
     """
     filtered_events = [
         e for e in list_of_events
@@ -105,7 +108,7 @@ def match_into_match_and_participants(
         for j, rune in enumerate(participant['perks']['styles'][0]['selections']):
             participant[f'rune_primary_{j}'] = rune['perk']
         # Secondary Runes
-        for rune in participant['perks']['styles'][1]['selections']:
+        for j, rune in enumerate(participant['perks']['styles'][1]['selections']):
             participant[f'rune_secondary_{j}'] = rune['perk']
         # Shards
         for shard_category, shard_id in participant['perks']['statPerks'].items():
@@ -133,6 +136,87 @@ def match_into_match_and_participants(
     return match_info, participants
 
 
+def respawn_event_from_kill_event(
+    event: dict,
+    list_of_events: list[dict],
+) -> dict:
+    victim_level = find_closest_event(
+        event,
+        list_of_events,
+        type='LEVEL_UP',
+        participantId=event['victimId']
+    ) or {'level': 1}
+
+    death_timer = death.timer(
+        level=victim_level['level'],
+        game_minutes=event['timestamp'] / 60000,
+    )
+
+    return {
+        'matchId': event['matchId'],
+        'type': 'RESPAWN',
+        'timestamp': event['timestamp'] + death_timer,
+        'participantId': event['victimId'],
+        'timeSpentDead': death_timer,
+    }
+
+
+def assist_events_from_kill_event(
+    event: dict,
+    assisting_players: list[int] | None = None,
+) -> list[dict]:    
+    list_of_assist_events = []
+
+    for assist_id in assisting_players:
+        assist_event = event.copy()
+        assist_event['type'] = event['type'].replace('KILL', 'ASSIST')
+        assist_event['participantId'] = assist_id
+
+        list_of_assist_events.append(assist_event)
+
+    return list_of_assist_events
+
+
+def killed_event_from_kill_event(
+    event: dict,
+) -> dict:
+    killed_event = event.copy()
+    killed_event['type'] = 'CHAMPION_KILLED'
+    killed_event['participantId'] = event['victimId']
+    killed_event['killerId'] = event['participantId']
+    return killed_event
+
+
+def update_participant_inventory(
+    inventory: list[int],
+    event: dict,
+) -> dict:
+    """
+    Update the inventory of a participant based on the event.
+    """
+    if event['type'] == 'ITEM_PURCHASED':
+        inventory.append(event['itemId'])
+    elif event['type'] in ('ITEM_SOLD', 'ITEM_DESTROYED'):
+        if event['itemId'] in inventory:
+            inventory.remove(event['itemId'])
+    elif event['type'] == 'ITEM_UNDO':
+        if event['afterId'] == 0 and event['beforeId'] in inventory:  # Undo purchase
+            inventory.remove(event['beforeId'])
+        else:  # Undo sell
+            inventory.append(event['afterId'])
+    
+    return inventory
+
+
+def objective_bounty_start_from_prestart(event: dict):
+    return {
+        "matchId": event["matchId"],
+        "type": "OBJECTIVE_BOUNTY_START",
+        "timestamp": event['actualStartTime'],
+        "teamId": event["teamId"]
+    }
+
+
 def timeline_into_events(
     timeline: dict,
     participants: list[dict],
@@ -152,7 +236,10 @@ def timeline_into_events(
         list_of_events.extend(frame['events'])
     
     # Preprocess events and collect all unique keys
-    all_columns = set()
+    all_columns = set(["eventId"])
+    # Keep track of inventories
+    inventory = {participant['participantId']: [] for participant in participants}
+
     for event in list_of_events:
         event['matchId'] = timeline['metadata']['matchId']
         event.pop('gameId', None)
@@ -162,15 +249,14 @@ def timeline_into_events(
             event['positionY'] = event['position']['y']
             event.pop('position', None)
 
-        # Ward creators are participants
-        if 'creatorId' in event:
-            event['participantId'] = event.pop('creatorId')
-
+        # Rename 'creatorId' and 'killerId' to 'participantId'
+        event['participantId'] = (
+            event.pop('creatorId', event.pop('killerId', event.get('participantId')))
+        )
+        # Only keep ingame timestamp
         event.pop('realTimestamp', None)
-        all_columns.update(event.keys())
     
-    # Add default position for item and dragon events
-    for event in list_of_events:
+        # Add default position for item and dragon events
         if event['type'].startswith('ITEM_') or event['type'] == 'DRAGON_SOUL_GIVEN':
             event['positionX'], event['positionY'] = default_position_from_event_type(
                 event,
@@ -181,6 +267,42 @@ def timeline_into_events(
                 ] if 'participantId' in event else None,
                 list_of_events=list_of_events
             )
+        # Add respawn event
+        if event['type'] == 'CHAMPION_KILL':
+            list_of_events.append(
+                respawn_event_from_kill_event(event, list_of_events)
+            )
+        # Add numberOfAssists to all _KILL events
+        if event["type"].endswith("_KILL"):
+            event['numberOfAssists'] = len(event.get('assistingParticipantIds', []))
+        # Split KILL events into KILL and ASSIST
+        if 'assistingParticipantIds' in event:
+            list_of_events.extend(assist_events_from_kill_event(
+                event,
+                event.pop("assistingParticipantIds")
+            ))
+        # Split CHAMPION_KILL events into KILL and KILLED
+        if event["type"] == "CHAMPION_KILL":
+            list_of_events.append(
+                killed_event_from_kill_event(event)
+            )
+        # Add inventory to ITEM_ events
+        if event['type'].startswith('ITEM_'):
+            event['inventory'] = update_participant_inventory(
+                inventory[event["participantId"]],
+                event,
+            ).copy()
+
+        # Add objective bounty start event from announcement
+        if event['type'] == 'OBJECTIVE_BOUNTY_PRESTART':
+            list_of_events.append(
+                objective_bounty_start_from_prestart(event)
+            )
+        
+        all_columns.update(event.keys())
 
     # Standardize events with missing keys set to None
-    return [{col: event.get(col) for col in all_columns} for event in list_of_events]
+    return [{
+        col: event.get(col) if col != "eventId" else event_id
+        for col in all_columns
+    } for event_id, event in enumerate(list_of_events) ]

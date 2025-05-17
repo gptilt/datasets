@@ -58,6 +58,7 @@ DAMAGE_DEALT = pa.list_(pa.struct([
 
 EVENTS = pa.schema([
     ('matchId', pa.string()),
+    ('eventId', pa.int16()),
     ('positionX', pa.int32()),
     ('positionY', pa.int32()),
     ('teamId', pa.int16()),
@@ -68,15 +69,15 @@ EVENTS = pa.schema([
     ('featType', pa.int16()),
     ('featValue', pa.int16()),
     # Gold
-    ('bounty', pa.int16()),
     ('currentGold', pa.int32()),
     ('goldGain', pa.int16()),
     ('goldPerSecond', pa.int16()),
     ('shutdownBounty', pa.int16()),
     ('totalGold', pa.int32()),
-    # Item Ids
+    # Items
     ('afterId', pa.int32()),
     ('beforeId', pa.int32()),
+    ('inventory', pa.list_(pa.int32())),
     ('itemId', pa.int32()),
     # Jungle
     ('jungleMinionsKilled', pa.int16()),
@@ -84,11 +85,13 @@ EVENTS = pa.schema([
     ('monsterType', pa.string()),
     ('name', pa.string()),
     # Kills
+    ('bounty', pa.int16()),
     ('killerId', pa.int16()),
     ('killerTeamId', pa.int16()),
     ('killStreakLength', pa.int16()),
     ('killType', pa.string()),
     ('multiKillLength', pa.int16()),
+    ('numberOfAssists', pa.int8()),
     ('victimDamageDealt', DAMAGE_DEALT),
     ('victimDamageReceived', DAMAGE_DEALT),
     ('victimId', pa.int16()),
@@ -102,13 +105,13 @@ EVENTS = pa.schema([
     ('skillSlot', pa.int16()),
     ('xp', pa.int32()),
     # Player
-    ('assistingParticipantIds', pa.list_(pa.int16())),
+    # ('assistingParticipantIds', pa.list_(pa.int16())),
     ('championStats', CHAMPION_STATS),
     ('damageStats', DAMAGE_STATS),
     ('minionsKilled', pa.int16()),
     ('participantId', pa.int16()),
     ('timeEnemySpentControlled', pa.int32()),
     # Wards
-    ('creatorId', pa.int16()),
+    # ('creatorId', pa.int16()),
     ('wardType', pa.string()),
 ])
