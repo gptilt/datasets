@@ -11,18 +11,18 @@ def main(
     flush: bool = True,
     overwrite: bool = False,
 ):
-    storage_silver = storage.StorageParquet(
+    storage_basic = storage.StorageParquet(
         root=root,
         dataset="tables",
-        schema="silver",
+        schema="basic",
         tables=["matches", "participants", "events"],
     )
 
     # Load dataframes
     print("Loading dataframes from storage...")
-    df_events = storage_silver.load_to_polars("events")
+    df_events = storage_basic.load_to_polars("events")
 
-    df_participants = storage_silver.load_to_polars("participants").select([
+    df_participants = storage_basic.load_to_polars("participants").select([
         "matchId",
         "participantId",
         "championId",

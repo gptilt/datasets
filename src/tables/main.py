@@ -9,8 +9,8 @@ def parse_args():
     subparsers = parser.add_subparsers(dest="schema", required=True)
 
     schemata = {
-        "silver": ["riot-api"],
-        "gold": ["events"],
+        "basic": ["riot-api"],
+        "ultimate": ["events"],
     }
 
     def add_common_args(subparser):

@@ -19,7 +19,7 @@ def main(
     storage_base = storage.StorageParquet(
         root,
         'tables',
-        'silver',
+        'basic',
         tables=['matches', 'participants', 'events']
     )
 
