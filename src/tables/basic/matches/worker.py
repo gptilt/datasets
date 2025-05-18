@@ -12,14 +12,14 @@ def main(
 ):
     storage_raw = storage.Storage(
         root,
-        'riot-api',
         'raw',
+        'riot_api',
         ['player_match_ids', 'match_info', 'match_timeline']
     )
     storage_base = storage.StorageParquet(
         root,
-        'tables',
         'basic',
+        'matches',
         tables=['matches', 'participants', 'events']
     )
 

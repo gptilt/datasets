@@ -6,8 +6,8 @@ from storage import Storage
 
 
 class StorageParquet(Storage):
-    def __init__(self, root: str, dataset: str, schema: str, tables: list[str]):
-        super().__init__(root, dataset, schema, tables, file_extension='parquet')
+    def __init__(self, root: str, schema: str, dataset: str, tables: list[str]):
+        super().__init__(root, schema, dataset, tables, file_extension='parquet')
         self.target_batch_size = 1_000_000_000  # 1 GB
         self.buffer = {
             table_name: []

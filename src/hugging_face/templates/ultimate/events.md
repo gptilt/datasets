@@ -31,9 +31,9 @@ For most informal work, a simple mention of the GPTilt project and the {{ pretty
 
 This dataset contains **{{ pretty_name }}**. It was collected and processed via the official Riot Games API as part of the GPTilt project. The primary goals are to democratize access to high-quality LoL data for research and analysis, and to foster public exploration into game dynamics using data-driven methods.
 
-The data is structured into a single enriched events table:
+The data is structured into a single **enriched events table**:
 
-* **events**: Contains a detailed timeline of enriched in-game events (e.g., `CHAMPION_KILL`, `ITEM_PURCHASED`, `WARD_PLACED`, `BUILDING_KILL`, `ELITE_MONSTER_KILL`) with timestamps, positions (where applicable), player inventories, player levels, etc.
+* **events**: Contains a **detailed timeline** of enriched in-game events (e.g., `CHAMPION_KILL`, `ITEM_PURCHASED`, `WARD_PLACED`, `BUILDING_KILL`, `ELITE_MONSTER_KILL`) with timestamps, and contextual information regarding both game state (player positions (where applicable), inventories, and levels) and pregame state (champions, runes, etc).
 
 ### Curation Rationale
 
@@ -49,8 +49,8 @@ The source data originates exclusively from the [**Riot Games API**](https://dev
 2. **Match History:** The `match-v5` endpoint was used to retrieve recent match IDs for these players.
 3. **Match & Timeline Fetching:** The `match-v5` (match details) and `match-v5` (match timeline) endpoints were used to download the full data for each unique match ID identified.
 4. **Raw Storage:** Raw API responses (JSON format) were saved.
-5. **Staging & Transformation:** Raw data was parsed, and transformed into three structured tables (`matches`, `participants`, `events`). These were used to build the enriched events dataset.
-6. **Output:** Data was written to Parquet files. Key libraries used include `pyarrow`.
+5. **Staging & Transformation:** Raw data was parsed, and transformed into the basic-tier dataset 'League of Legends Challenger Matches'. The matches dataset was then used to build the enriched events dataset.
+6. **Output:** Data was written to Parquet files.
 
 #### Who are the source data producers?
 

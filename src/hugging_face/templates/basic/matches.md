@@ -55,7 +55,7 @@ The source data originates exclusively from the [**Riot Games API**](https://dev
 3. **Match & Timeline Fetching:** The `match-v5` (match details) and `match-v5` (match timeline) endpoints were used to download the full data for each unique match ID identified.
 4. **Raw Storage:** Raw API responses (JSON format) were saved.
 5. **Staging & Transformation:** Raw data was parsed, and transformed into three structured tables (`matches`, `participants`, `events`).
-6. **Output:** Data was written to Parquet files, partitioned by `region`. Key libraries used include `pyarrow`.
+6. **Output:** Data was written to Parquet files, partitioned by `region`.
 
 #### Who are the source data producers?
 

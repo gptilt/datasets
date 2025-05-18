@@ -8,7 +8,7 @@ from storage import StorageParquet
 @pytest.fixture
 def sample_partitioned_parquet(tmp_path):
     """Create a small hive-partitioned Parquet dataset."""
-    base_path = tmp_path / "gptilt" / "match_v5" / "players"
+    base_path = tmp_path / "basic" / "matches" / "players"
     europe_path = base_path / "region=europe"
     europe_path.mkdir(parents=True)
 
@@ -26,10 +26,10 @@ def sample_partitioned_parquet(tmp_path):
 
 @pytest.fixture
 def storage_parquet(sample_partitioned_parquet):
-    dataset = "gptilt"
-    schema = "match_v5"
+    schema = "basic"
+    dataset = "matches"
     tables = ["games", "players"]
-    return StorageParquet(sample_partitioned_parquet, dataset, schema, tables)
+    return StorageParquet(sample_partitioned_parquet, schema, dataset, tables)
 
 
 def test_initialization_defaults(storage_parquet):

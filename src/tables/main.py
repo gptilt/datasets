@@ -9,7 +9,7 @@ def parse_args():
     subparsers = parser.add_subparsers(dest="schema", required=True)
 
     schemata = {
-        "basic": ["riot-api"],
+        "basic": ["matches"],
         "ultimate": ["events"],
     }
 
@@ -19,12 +19,12 @@ def parse_args():
         subparser.add_argument("--count", help="Number of games to process.", type=int, default=10000)
         subparser.add_argument("--overwrite", action="store_true", help="Overwrite existing records.")
 
-    for schema, tables in schemata.items():
+    for schema, datasets in schemata.items():
         schema_parser = subparsers.add_parser(schema, help=f"Run data pipelines for schema: {schema.upper()}.")
-        table_subparsers = schema_parser.add_subparsers(dest="table", required=True)
+        dataset_subparsers = schema_parser.add_subparsers(dest="dataset", required=True)
 
-        for table_name in tables:
-            table_parser = table_subparsers.add_parser(table_name, help=f"Table: {schema}.{table_name}.")
+        for dataset in datasets:
+            table_parser = dataset_subparsers.add_parser(dataset, help=f"Table: {schema}.{dataset}.")
             add_common_args(table_parser)
 
     return parser.parse_args()
@@ -36,7 +36,7 @@ def main():
     print(f"Root directory: {args.root}")
 
     # Import the appropriate worker based on the schema
-    module_path = f".{args.schema}.{args.table.replace('-', '_')}.worker"  # Importlib doesn't allow hyphens
+    module_path = f".{args.schema}.{args.dataset.replace('-', '_')}.worker"  # Importlib doesn't allow hyphens
 
     # Dynamically import the module and get the worker
     try:

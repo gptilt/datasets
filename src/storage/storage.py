@@ -3,9 +3,9 @@ from pathlib import Path
 
 
 class Storage:
-    def __init__(self, root: str, dataset: str, schema: str, tables: list[str], file_extension: str = 'json'):
+    def __init__(self, root: str, schema: str, dataset: str, tables: list[str], file_extension: str = 'json'):
         self.schema = schema
-        self.root_path = Path(root, dataset, schema)
+        self.root_path = Path(root, schema, dataset)
         self.tables = tables
         self.file_extension = file_extension
 

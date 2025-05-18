@@ -4,10 +4,10 @@ from storage import Storage
 
 @pytest.fixture
 def storage_instance(tmp_path):
-    dataset = "my_dataset"
     schema = "my_schema"
+    dataset = "my_dataset"
     tables = ["table1", "table2"]
-    return Storage(tmp_path, dataset, schema, tables)
+    return Storage(tmp_path, schema, dataset, tables)
 
 def test_directories_created(storage_instance):
     for table in storage_instance.tables:

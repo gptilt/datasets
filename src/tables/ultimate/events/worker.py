@@ -13,8 +13,8 @@ def main(
 ):
     storage_basic = storage.StorageParquet(
         root=root,
-        dataset="tables",
         schema="basic",
+        dataset="matches",
         tables=["matches", "participants", "events"],
     )
 
@@ -69,8 +69,8 @@ def main(
 
     storage_gold = storage.StorageParquet(
         root=root,
-        dataset="tables",
-        schema="gold",
+        schema="ultimate",
+        dataset="events",
         tables=["events"],
     )
     print("Writing enriched dataset to storage...")
