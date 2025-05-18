@@ -1,9 +1,8 @@
 import argparse
+from .dataset import PolarsDatasetBuilder
 from huggingface_hub import DatasetCard, DatasetCardData
-from huggingface_hub import HfApi
-import os
-from pathlib import Path
 from riot_api import disclaimer
+from storage import StorageParquet
 import time
 
 
@@ -26,9 +25,9 @@ def parse_args():
         help="Dataset to upload."
     )
     parser.add_argument(
-        "--match-count",
+        "--count",
         required=True,
-        help="Number of matches in the dataset."
+        help="Number of samples in the dataset."
     )
 
     return parser.parse_args()
@@ -42,25 +41,35 @@ def main():
             "matches": {
                 "pretty_name": '10K League of Legends Challenger Matches',
                 "dataset_summary": "10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
+                "tables": ["matches", "events", "participants"]
             }
         },
         "ultimate": {
             "events": {
                 "pretty_name": '1M Enriched Events from 10K LoL Challenger Matches',
                 "dataset_summary": "1M Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
+                "tables": ["events"]
             }
         }
     }
-    dataset_id = f"{args.schema}-{args.dataset}-challenger-{args.match_count}"
-    repo_id = f"gptilt/{dataset_id}"
+    tables = schemas_and_datasets[args.schema][args.dataset]["tables"]
 
-    api = HfApi(token=os.getenv("HF_TOKEN"))
-
-    api.upload_folder(
-        folder_path=Path(args.root, args.schema, args.dataset),
-        repo_id=repo_id,
-        repo_type="dataset",
+    storage = StorageParquet(
+        args.root,
+        args.schema,
+        args.dataset,
+        tables
     )
+    builder = PolarsDatasetBuilder(tables={
+        table: storage.load_to_polars(table)
+        for table in tables
+    })
+    builder.download_and_prepare()
+    dataset = builder.as_dataset()
+    
+    dataset_id = f"lol-{args.schema}-{args.dataset}-challenger-{args.count}"
+    repo_id = f"gptilt/{dataset_id}"
+    dataset.push_to_hub(repo_id)
 
     card_data = DatasetCardData(
         pretty_name=schemas_and_datasets[args.schema][args.dataset]["pretty_name"],

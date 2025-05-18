@@ -8,23 +8,20 @@ This dataset is part of the [GPTilt](https://github.com/gptilt) open-source init
 
 *By using this dataset, users accept full responsibility for any consequences arising from its use. GPTilt assumes no liability for any damages that may result. Users are strongly encouraged to review the ["Uses"](#uses) section—particularly the ["Out-of-Scope Use"](#out-of-scope-use) subsection—for guidance.*
 
-## Citation
+## Getting Started
 
-**If you wish to use this dataset in your work, we kindly ask that you cite it.**
+First, install Hugging Face's [datasets](https://pypi.org/project/datasets/) package:
 
-For most informal work, a simple mention of the GPTilt project and the {{ pretty_name }} dataset will suffice.
+```bash
+pip install datasets
+```
 
-**BibTeX:**
+Now, you can load the dataset, and select the desired split!
 
-```bibtex
-@misc{gptilt_{{ pretty_name | replace(" ", "_") | lower }},
-  author    = { {{ curators | default("GPTilt Contributors", true) }} },
-  title     = { {{ pretty_name }} },
-  year      = { {{ creation_date  }} },
-  publisher = { Hugging Face },
-  journal   = { Hugging Face Hub },
-  url       = { https://huggingface.co/datasets/gptilt/{{ id }} }
-}
+```py
+from datasets import load_dataset
+
+dataset = load_dataset("gptilt/{{ id }}", split="matches")
 ```
 
 ## Dataset Details
@@ -33,12 +30,12 @@ This dataset contains **{{ pretty_name }}**. It was collected and processed via 
 
 The data is structured into three tables:
 
-* **matches**: Contains match-level metadata (e.g., `matchId`, `gameDuration`, `gameVersion`, `winningTeam`).
-* **participants**: Contains details for each of the 10 participants per match (e.g., `puuid`, `championId`, `teamId`, final stats like kills, deaths, assists, gold earned, items).
-* **events**: Contains a detailed timeline of in-game events (e.g., `CHAMPION_KILL`, `ITEM_PURCHASED`, `WARD_PLACED`, `BUILDING_KILL`, `ELITE_MONSTER_KILL`) with timestamps, positions (where applicable), involved participants/items, etc. Additionally, to facilitate analysis:
-  * Periodic snapshots (typically per minute) of all participant states (`participantFrames`) are split into per-participant `PARTICIPANT_FRAME` events.
-  * `ELITE_MONSTER_KILL` and `CHAMPION_KILL` events are split into `_KILL` and `_ASSIST` events, with one event per participant.
-  * `CHAMPION_KILL` events are split into `CHAMPION_KILL` and `CHAMPION_KILLED` events, respectively. This helps model the game as a series of events that happen/are enacted to/by individual participants in the game.
+- **matches**: Contains match-level metadata (e.g., `matchId`, `gameDuration`, `gameVersion`, `winningTeam`).
+- **participants**: Contains details for each of the 10 participants per match (e.g., `puuid`, `championId`, `teamId`, final stats like kills, deaths, assists, gold earned, items).
+- **events**: Contains a detailed timeline of in-game events (e.g., `CHAMPION_KILL`, `ITEM_PURCHASED`, `WARD_PLACED`, `BUILDING_KILL`, `ELITE_MONSTER_KILL`) with timestamps, positions (where applicable), involved participants/items, etc. Additionally, to facilitate analysis:
+  - Periodic snapshots (typically per minute) of all participant states (`participantFrames`) are split into per-participant `PARTICIPANT_FRAME` events.
+  - `ELITE_MONSTER_KILL` and `CHAMPION_KILL` events are split into `_KILL` and `_ASSIST` events, with one event per participant.
+  - `CHAMPION_KILL` events are split into `CHAMPION_KILL` and `CHAMPION_KILLED` events, respectively. This helps model the game as a series of events that happen/are enacted to/by individual participants in the game.
 
 ### Curation Rationale
 
@@ -67,17 +64,17 @@ The dataset contains **PUUIDs** and **Participant IDs**, which are pseudonymous 
 
 ### Bias, Risks, and Limitations
 
-* **Skill Tier Bias:** This dataset focuses *exclusively* on the Challenger tier. Findings may not generalize to other skill levels (Bronze, Silver, Gold, Platinum, Diamond, Master, Grandmaster) where metas, champion picks, and strategic execution differ significantly. Because match data is selected by searching for Challenger players, multi-tier games may (and are expected) to be present in the dataset.
-* **Regional Bias:** While collected from multiple regions, the distribution might not be perfectly balanced, potentially reflecting the metas dominant in the included regions during the collection period.
-* **Patch Bias:** The data reflects gameplay on specific game versions (see `matches` table `gameVersion` field). Major patches can significantly alter champion balance, items, and objectives, potentially making findings less relevant to different patches.
-* **Missing Context:** The data captures *recorded* events and states but lacks external context like player communication (voice/text chat), player fatigue/tilt, real-time strategic intent, or external distractions.
-* **API Limitations:** Data is subject to the accuracy and granularity provided by the Riot Games API. Some nuanced actions or states might not be perfectly captured. Rate limits inherent to the API restrict the size and frequency of potential dataset updates.
+- **Skill Tier Bias:** This dataset focuses *exclusively* on the Challenger tier. Findings may not generalize to other skill levels (Bronze, Silver, Gold, Platinum, Diamond, Master, Grandmaster) where metas, champion picks, and strategic execution differ significantly. Because match data is selected by searching for Challenger players, multi-tier games may (and are expected) to be present in the dataset.
+- **Regional Bias:** While collected from multiple regions, the distribution might not be perfectly balanced, potentially reflecting the metas dominant in the included regions during the collection period.
+- **Patch Bias:** The data reflects gameplay on specific game versions (see `matches` table `gameVersion` field). Major patches can significantly alter champion balance, items, and objectives, potentially making findings less relevant to different patches.
+- **Missing Context:** The data captures *recorded* events and states but lacks external context like player communication (voice/text chat), player fatigue/tilt, real-time strategic intent, or external distractions.
+- **API Limitations:** Data is subject to the accuracy and granularity provided by the Riot Games API. Some nuanced actions or states might not be perfectly captured. Rate limits inherent to the API restrict the size and frequency of potential dataset updates.
 
 #### Recommendations
 
-* Users should explicitly acknowledge the **high-elo (Challenger) bias** when reporting results and be cautious about generalizing findings to other player segments.
-* Always consider the **game version (`gameVersion`)** when analyzing the data, as metas and balance change significantly between patches.
-* Users **must** adhere to the **Riot Games API Terms of Service and Developer Policies** in all uses of this data.
+- Users should explicitly acknowledge the **high-elo (Challenger) bias** when reporting results and be cautious about generalizing findings to other player segments.
+- Always consider the **game version (`gameVersion`)** when analyzing the data, as metas and balance change significantly between patches.
+- Users **must** adhere to the **Riot Games API Terms of Service and Developer Policies** in all uses of this data.
 
 ## Uses
 
@@ -93,11 +90,11 @@ This dataset and all associated code is licensed under the [Creative Commons Att
 
 This dataset is intended for **non-commercial research, data analysis, and exploration** aimed at understanding League of Legends gameplay dynamics, strategic patterns, champion interactions, and game flow. Suitable uses include:
 
-* Statistical analysis of high-elo match characteristics.
-* Exploratory data analysis to uncover trends and correlations.
-* Training machine learning models (including Transformer-based architectures like LLoLMs) for tasks related to **game state representation, event sequence modeling, and pattern recognition for game understanding.**
-* Feature engineering for derived metrics.
-* Educational purposes related to data science and game analytics.
+- Statistical analysis of high-elo match characteristics.
+- Exploratory data analysis to uncover trends and correlations.
+- Training machine learning models (including Transformer-based architectures like LLoLMs) for tasks related to **game state representation, event sequence modeling, and pattern recognition for game understanding.**
+- Feature engineering for derived metrics.
+- Educational purposes related to data science and game analytics.
 
 **Users must ensure their use case complies with the Riot Games API [Terms of Service](https://developer.riotgames.com/terms) and [Developer Policies](https://developer.riotgames.com/policies/general). Consult these policies before using the data.**
 
@@ -111,9 +108,28 @@ This dataset is derived from high-elo games and may not accurately represent gam
 
 ### May 18, 2025
 
-* Challenge and mission information were removed from the `match` table.
-* `ELITE_MONSTER_KILL` and `CHAMPION_KILL` events were split into `_KILL` and `_ASSIST` events, respectively.
-* `CHAMPION_KILL` events were split into `CHAMPION_KILL` and `CHAMPION_KILLED` events.
-* Event field `killerId` was replaced by `participantId`, with the exception of the new `CHAMPION_KILLED` events.
-* Normalize rune information in `participants`.
-* Create `OBJECTIVE_BOUNTY_START` event from `OBJECTIVE_BOUNTY_PRESTART` event (announcement).
+- Challenge and mission information were removed from the `match` table.
+- `ELITE_MONSTER_KILL` and `CHAMPION_KILL` events were split into `_KILL` and `_ASSIST` events, respectively.
+- `CHAMPION_KILL` events were split into `CHAMPION_KILL` and `CHAMPION_KILLED` events.
+- Event field `killerId` was replaced by `participantId`, with the exception of the new `CHAMPION_KILLED` events.
+- Normalize rune information in `participants`.
+- Create `OBJECTIVE_BOUNTY_START` event from `OBJECTIVE_BOUNTY_PRESTART` event (announcement).
+
+## Citation
+
+**If you wish to use this dataset in your work, we kindly ask that you cite it.**
+
+For most informal work, a simple mention of the GPTilt project and the {{ pretty_name }} dataset will suffice.
+
+**BibTeX:**
+
+```bibtex
+@misc{gptilt_{{ pretty_name | replace(" ", "_") | lower }},
+  author    = { {{ curators | default("GPTilt Contributors", true) }} },
+  title     = { {{ pretty_name }} },
+  year      = { {{ creation_date  }} },
+  publisher = { Hugging Face },
+  journal   = { Hugging Face Hub },
+  url       = { https://huggingface.co/datasets/gptilt/{{ id }} }
+}
+```
