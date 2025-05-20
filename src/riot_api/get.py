@@ -43,7 +43,7 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
                     await asyncio.sleep(retry_after)
                     continue
                 elif response.status == 502:
-                    print(f"[GATEWAY TIMEOUT] {endpoint} - retrying...")
+                    print(f"[BAD GATEWAY] {endpoint} - retrying...")
                     await asyncio.sleep(5)
                     continue
                 elif response.status == 504:
