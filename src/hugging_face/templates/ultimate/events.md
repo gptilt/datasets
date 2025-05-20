@@ -1,4 +1,17 @@
 ---
+configs:
+- config_name: events
+  data_files:
+  - split: region_americas
+    path:
+    - "data/region_americas*.parquet"
+  - split: region_europe
+    path:
+    - "data/region_europe*.parquet"
+  - split: region_asia
+    path:
+    - "data/region_asia*.parquet"
+
 {{ card_data }}
 ---
 

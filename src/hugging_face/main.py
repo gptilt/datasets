@@ -1,8 +1,7 @@
 import argparse
-from .dataset import PolarsDatasetBuilder
-from huggingface_hub import DatasetCard, DatasetCardData
+import huggingface_hub as hub
+import pathlib
 from riot_api import disclaimer
-from storage import StorageParquet
 import time
 
 
@@ -41,7 +40,7 @@ def main():
             "matches": {
                 "pretty_name": '10K League of Legends Challenger Matches',
                 "dataset_summary": "10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
-                "tables": ["matches", "events", "participants"]
+                "tables": ["matches", "participants", "events"]
             }
         },
         "ultimate": {
@@ -54,29 +53,25 @@ def main():
     }
     tables = schemas_and_datasets[args.schema][args.dataset]["tables"]
 
-    storage = StorageParquet(
-        args.root,
-        args.schema,
-        args.dataset,
-        tables
-    )
-    builder = PolarsDatasetBuilder(tables={
-        table: storage.load_to_polars(table)
-        for table in tables
-    })
-    builder.download_and_prepare()
-    dataset = builder.as_dataset()
-    
     dataset_id = f"lol-{args.schema}-{args.dataset}-challenger-{args.count}"
     repo_id = f"gptilt/{dataset_id}"
-    dataset.push_to_hub(repo_id)
 
-    card_data = DatasetCardData(
+    api = hub.HfApi()
+    for table in tables:
+        api.upload_folder(
+            repo_id=repo_id,
+            folder_path=pathlib.Path(args.root, args.schema, args.dataset, table),
+            path_in_repo=table,
+            repo_type="dataset",
+        )
+
+    card_data = hub.DatasetCardData(
         pretty_name=schemas_and_datasets[args.schema][args.dataset]["pretty_name"],
         dataset_summary=schemas_and_datasets[args.schema][args.dataset]["dataset_summary"],
         multilinguality='monolingual',
+        config_names=tables
     )
-    card = DatasetCard.from_template(
+    card = hub.DatasetCard.from_template(
         card_data,
         disclaimer=disclaimer.TEXT,
         creation_date=time.strftime("%Y"),

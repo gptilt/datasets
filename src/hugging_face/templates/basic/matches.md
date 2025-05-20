@@ -1,4 +1,39 @@
 ---
+configs:
+- config_name: matches
+  data_files:
+  - split: region_americas
+    path:
+    - "matches/region_americas*.parquet"
+  - split: region_europe
+    path:
+    - "matches/region_europe*.parquet"
+  - split: region_asia
+    path:
+    - "matches/region_asia*.parquet"
+- config_name: participants
+  data_files:
+  - split: region_americas
+    path:
+    - "participants/region_americas*.parquet"
+  - split: region_europe
+    path:
+    - "participants/region_europe*.parquet"
+  - split: region_asia
+    path:
+    - "participants/region_asia*.parquet"
+- config_name: events
+  data_files:
+  - split: region_americas
+    path:
+    - "events/region_americas*.parquet"
+  - split: region_europe
+    path:
+    - "events/region_europe*.parquet"
+  - split: region_asia
+    path:
+    - "events/region_asia*.parquet"
+
 {{ card_data }}
 ---
 
@@ -16,12 +51,16 @@ First, install Hugging Face's [datasets](https://pypi.org/project/datasets/) pac
 pip install datasets
 ```
 
-Now, you can load the dataset, and select the desired split!
+Now, you can load the dataset!
 
 ```py
 from datasets import load_dataset
 
-dataset = load_dataset("gptilt/{{ id }}", split="matches")
+# Specify just the config_name / table
+dataset = load_dataset("gptilt/{{ id }}", name="matches")
+
+# Or include the split!
+dataset = load_dataset("gptilt/{{ id }}", name="matches", split="region_americas")
 ```
 
 ## Dataset Details
