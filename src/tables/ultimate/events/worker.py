@@ -16,6 +16,8 @@ def main(
         schema="basic",
         dataset="matches",
         tables=["matches", "participants", "events"],
+        partition_col="region",
+        partition_val=region
     )
 
     # Load dataframes

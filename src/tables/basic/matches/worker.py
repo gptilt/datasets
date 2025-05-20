@@ -21,7 +21,8 @@ def main(
         'basic',
         'matches',
         tables=['matches', 'participants', 'events'],
-        region=region
+        partition_col="region",
+        partition_val=region
     )
 
     def process_match(match_id: str) -> tuple[dict, list[dict], list[dict]]:
@@ -55,7 +56,7 @@ def main(
         'match_info',
         record='*',
         region=region,
-        count=int(count * 1.5)
+        count=int(count * 1.2)
     )
 
     matches, participants, events = [], [], []

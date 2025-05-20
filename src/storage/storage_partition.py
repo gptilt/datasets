@@ -1,31 +1,36 @@
 from common import print
-import datasets as hf_ds
+import datasets
+import os
 from pathlib import Path
 import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
-import pyarrow.parquet as pa_pq
 from storage import Storage
 
 
 class StoragePartition(Storage):
-    def __init__(self, root: str, schema: str, dataset: str, tables: list[str], **dict_of_partition_specifiers: dict[str, str] | None):
+    def __init__(
+        self,
+        root: str,
+        schema: str,
+        dataset: str,
+        tables: list[str],
+        partition_col: str = None,
+        partition_val: str = None
+    ):
         super().__init__(root, schema, dataset, tables, file_extension='parquet')
         self.target_batch_size = 1_000_000_000  # 1 GB
-        self.dict_of_partition_specifiers = dict_of_partition_specifiers
+        self.partition_col, self.partition_val = partition_col, partition_val
+        
         self.buffer = {
             table_name: []
             for table_name in tables
         }
         self.shard_id = { table_name: 0 for table_name in tables}
-        # self.dict_of_dataset_builders = {
-        #     table: hf_ds.DatasetBuilder(
-        #         dataset_name=table,
-        #         config_name=table,
-        #         data_dir=root,  # Each config will take care of its subdirectory
-        #     )
-        #     for table in tables
-        # }
+
+
+    def split(self) -> str:
+        return "_".join((self.partition_col, self.partition_val))
     
 
     def has_records_in_all_tables(self, **kwargs):
@@ -60,14 +65,30 @@ class StoragePartition(Storage):
         return False
     
 
-    def _add_partition_columns_to_arrow_table(
+    def list_of_partitions(
+        self, table_name: str
+    ) -> int:    
+        table_path = self.table_path(table_name)
+        leaf_dirs = []
+
+        for dirpath, dirnames, filenames in os.walk(table_path):
+            if not dirnames:  # no subdirectories => leaf directory (partition)
+                rel_path = os.path.relpath(dirpath, table_path)
+                if rel_path == '.':
+                    leaf_dirs.append(())  # root is the only leaf
+                else:
+                    leaf_dirs.append(tuple(rel_path.split(os.sep)))
+
+        return leaf_dirs
+
+
+    def _add_partition_column_to_arrow_table(
         self,
         table: pa.Table,
     ) -> pa.Table:
-        for col_name, col_value in self.dict_of_partition_specifiers.items():
-            if col_name not in table.schema.names:
-                col_array = pa.array([col_value] * len(table))
-                table = table.append_column(col_name, col_array)
+        if self.partition_col not in table.schema.names:
+            col_array = pa.array([self.partition_val] * len(table))
+            table = table.append_column(self.partition_col, col_array)
         
         return table
 
@@ -92,13 +113,6 @@ class StoragePartition(Storage):
                     raise ValueError(f"Failed to convert record {record} to Arrow Table: {e}")
             raise
 
-
-    def partition_path(self, table_name):
-        return super()._partition_path(
-            table_name,
-            **self.dict_of_partition_specifiers
-        )
-
     
     def _flush_table(
         self,
@@ -109,16 +123,15 @@ class StoragePartition(Storage):
         Write to disk using pyarrow datasets.
         Overwrites existing dataset for simplicity.
         """
-        table = self._add_partition_columns_to_arrow_table(table)
-        print(f"\nDataset schema: {table.schema}")
-
+        table = self._add_partition_column_to_arrow_table(table)
         nbytes = table.nbytes
 
-        partition_path = self.partition_path(table_name)
-        pa_pq.write_table(table, Path(
-            partition_path,
-            f"shard-{self.shard_id[table_name]:05d}.parquet"
-        ))
+        ds = datasets.Dataset(
+            table,
+            split=self.split(),
+            info=datasets.DatasetInfo()
+        )
+        ds.to_parquet(f"{self.table_path(table_name)}/{self.split()}-{self.shard_id[table_name]:05d}.parquet")
         self.shard_id[table_name] += 1
 
         return nbytes
@@ -210,16 +223,16 @@ class StoragePartition(Storage):
                 Returns an empty DataFrame if the dataset or specified
                 partitions do not exist or if an error occurs.
         """
-        partition_path = self.partition_path(table_name)
-        print(f"Attempting to load table '{table_name}' from: {partition_path}")
+        table_path = self.table_path(table_name)
+        print(f"Attempting to load table '{table_name}' from: {table_path}")
 
         try:
             lazy_df = pl.scan_parquet(
-                f"{str(partition_path)}/**/*.parquet",
+                f"{str(table_path)}/{self.split()}-*.parquet",
                 hive_partitioning=True,
             )
         except FileNotFoundError:
-            print(f"No parquet files found for table '{table_name}' at {partition_path}.")
+            print(f"No parquet files found for table '{table_name}' at {table_path}.")
             return pl.DataFrame()
 
         # Apply column selection
@@ -242,14 +255,3 @@ class StoragePartition(Storage):
         except Exception as e:
             print(f"Failed to collect dataset for table '{table_name}': {e}")
             return pl.DataFrame()
-
-    # def load_to_dataset(
-    #     self,
-    #     table_name: str,
-    #     columns: list[str] | None = None,
-    #     **partition_columns: str | None
-    # ):
-
-    # def to_iterable_dataset(
-        
-    # ) -> hf_ds.IterableDataset:
