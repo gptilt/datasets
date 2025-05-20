@@ -11,7 +11,7 @@ def main(
     flush: bool = True,
     overwrite: bool = False,
 ):
-    storage_basic = storage.StorageParquet(
+    storage_basic = storage.StoragePartition(
         root=root,
         schema="basic",
         dataset="matches",
@@ -67,7 +67,7 @@ def main(
         df_level_up_events=df_events.filter(pl.col("type") == "LEVEL_UP")
     )
 
-    storage_gold = storage.StorageParquet(
+    storage_gold = storage.StoragePartition(
         root=root,
         schema="ultimate",
         dataset="events",

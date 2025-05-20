@@ -1,5 +1,6 @@
 from dorans import death
 import json
+import re
 
 
 def find_closest_event(
@@ -60,10 +61,15 @@ def default_position_from_event_type(
 def match_into_match_and_participants(
     match_id: str,
     match: dict,
+    region: str,
 ) -> tuple[dict, list[dict]]:
     match_info = match['info']
     # match['info'] only has 'gameId'
     match_info['matchId'] = match_id
+    # Add region
+    match_info['region'] = region
+    # Add server
+    match_info['server'] = re.match(r"[a-zA-Z]+", match_id).group(0) or ""
 
     # Add ban information to participant
     team_info = {

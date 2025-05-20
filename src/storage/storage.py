@@ -3,7 +3,14 @@ from pathlib import Path
 
 
 class Storage:
-    def __init__(self, root: str, schema: str, dataset: str, tables: list[str], file_extension: str = 'json'):
+    def __init__(
+        self,
+        root: str,
+        schema: str,
+        dataset: str,
+        tables: list[str],
+        file_extension: str = 'json'
+    ):
         self.schema = schema
         self.root_path = Path(root, schema, dataset)
         self.tables = tables
@@ -23,7 +30,7 @@ class Storage:
             raise FileNotFoundError(f"Table {table_name} not found in schema {self.schema}.")
         return Path(self.root_path, table_name)
     
-    def partition(self, table_name: str, **partition_columns: dict[str, str] | None) -> Path:
+    def _partition_path(self, table_name: str, **partition_columns: dict[str, str] | None) -> Path:
         """
         Get the path for a partitioned table using k=v pairs.
         """
@@ -41,7 +48,7 @@ class Storage:
         count: int = 1,
         **partition_columns: dict[str, str] | None
     ) -> list[Path]:
-        partition = self.partition(table_name, **partition_columns)
+        partition = self._partition_path(table_name, **partition_columns)
         files = list(partition.rglob(f"{record}.{self.file_extension}"))
         if not files:
             raise FileNotFoundError(f"No file {record}.{self.file_extension} found in partition.")
@@ -97,7 +104,7 @@ class Storage:
         contents: any,
         **partition_columns: dict[str, str] | None
     ):
-        partition = self.partition(table_name, **partition_columns)
+        partition = self._partition_path(table_name, **partition_columns)
         with open(Path(partition, f"{record}.{self.file_extension}"), 'w') as f:
             if self.file_extension == 'json':
                 json.dump(contents, f)

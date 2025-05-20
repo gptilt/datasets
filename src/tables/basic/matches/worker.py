@@ -16,17 +16,18 @@ def main(
         'riot_api',
         ['player_match_ids', 'match_info', 'match_timeline']
     )
-    storage_base = storage.StorageParquet(
+    storage_basic = storage.StoragePartition(
         root,
         'basic',
         'matches',
-        tables=['matches', 'participants', 'events']
+        tables=['matches', 'participants', 'events'],
+        region=region
     )
 
     def process_match(match_id: str) -> tuple[dict, list[dict], list[dict]]:
         print(f"[{region}] Processing match {match_id}...")
 
-        if not overwrite and storage_base.has_records_in_all_tables(matchId=match_id):
+        if not overwrite and storage_basic.has_records_in_all_tables(matchId=match_id):
             print(f"[{region}] Match {match_id} already exists.")
             return
         
@@ -41,7 +42,11 @@ def main(
             return
         timeline = storage_raw.read_files('match_timeline', record=match_id, region=region)
 
-        match, participants = transform.match_into_match_and_participants(match_id=match_id, match=info)
+        match, participants = transform.match_into_match_and_participants(
+            match_id=match_id,
+            match=info,
+            region=region,
+        )
         events = transform.timeline_into_events(timeline=timeline, participants=participants)
 
         return match, participants, events
@@ -67,12 +72,11 @@ def main(
             real_count += 1
          
     print(f"[{region}] Storing {len(matches)} matches...")
-    storage_base.store_batch('matches', matches, region=region)
-    storage_base.store_batch('participants', participants, region=region)
-    storage_base.store_batch('events', events, schema=schema.EVENTS, region=region)
+    storage_basic.store_batch('matches', matches)
+    storage_basic.store_batch('participants', participants)
+    storage_basic.store_batch('events', events, schema=schema.EVENTS)
 
     if flush:
-        storage_base.flush(
+        storage_basic.flush(
             {'events': schema.EVENTS},
-            region=region
         )
