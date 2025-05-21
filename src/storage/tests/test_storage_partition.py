@@ -1,27 +1,6 @@
 import polars as pl
 import pytest
-import pyarrow as pa
-import pyarrow.parquet as pq
-from storage import StoragePartition
-
-
-@pytest.fixture
-def sample_parquet_file(tmp_path):
-    """Create a small hive-partitioned Parquet dataset."""
-    base_path = tmp_path / "basic" / "matches" / "players"
-    base_path.mkdir(parents=True)
-
-    # Create dummy data
-    europe_df = pl.DataFrame({
-        "id": [1, 2],
-        "name": ["Alice", "Bob"],
-        "region": ["europe", "europe"]
-    })
-
-    # Save as partitioned Parquet
-    europe_df.write_parquet(base_path / "data.parquet")
-
-    return base_path
+import storage
 
 
 @pytest.fixture
@@ -29,7 +8,7 @@ def storage_partition(tmp_path):
     schema = "basic"
     dataset = "matches"
     tables = ["games", "players"]
-    return StoragePartition(
+    return storage.StoragePartition(
         tmp_path,
         schema,
         dataset,
@@ -41,9 +20,8 @@ def storage_partition(tmp_path):
 
 def test_initialization_defaults(storage_partition):
     assert storage_partition.file_extension == "parquet"
-    assert storage_partition.target_batch_size == 1_000_000_000
+    assert storage_partition.target_batch_size == 2_000_000_000
     for table in storage_partition.tables:
-        assert storage_partition.buffer[table] == []
         assert storage_partition.table_path(table).exists()
 
 
@@ -54,21 +32,16 @@ def test_has_record_false_when_no_dir(storage_partition):
 
 def test_has_record_false_when_column_missing(storage_partition):
     # Create table with unrelated column
-    table_path = storage_partition.table_path("games")
-    table = pa.table({"game_id": [1, 2, 3]})
-    storage_partition._flush_table("games", table)
+    df = pl.DataFrame({"game_id": [1, 2, 3]})
+    storage_partition._flush_table("games", df)
 
     result = storage_partition.has_record("games", "nonexistent_column", 123)
     assert result is False
 
 
 def test_has_record_true_when_value_exists(storage_partition):
-    table_path = storage_partition.table_path("players")
-    table = pa.table({"summoner_id": ["a", "b", "c"]})
-    storage_partition._flush_table("players", table)
-
-    import os
-    print(os.listdir(table_path))
+    df = pl.DataFrame({"summoner_id": ["a", "b", "c"]})
+    storage_partition._flush_table("players", df)
 
     assert storage_partition.has_record("players", "summoner_id", "b") is True
     assert storage_partition.has_record("players", "summoner_id", "z") is False
@@ -77,8 +50,8 @@ def test_has_record_true_when_value_exists(storage_partition):
 def test_has_records_in_all_tables(storage_partition):
     for table_name in storage_partition.tables:
         table_path = storage_partition.table_path(table_name)
-        table = pa.table({"game_id": ["abc", "def"]})
-        pq.write_table(table, table_path / "file.parquet")
+        df = pl.DataFrame({"game_id": ["abc", "def"]})
+        df.write_parquet(table_path / "file.parquet")
 
     assert storage_partition.has_records_in_all_tables(game_id="abc") is True
     assert storage_partition.has_records_in_all_tables(game_id="xyz") is False
@@ -87,15 +60,14 @@ def test_has_records_in_all_tables(storage_partition):
 def test_flush_table_creates_file(storage_partition):
     # Create a small table
     data = [{"id": i, "value": i * 10, "region": "europe"} for i in range(5)]
-    table = storage_partition._arrow_table_from_list_of_records(data)
+    df = storage.to_polars(data)
 
-    storage_partition._flush_table("games", table)
+    storage_partition._flush_table("games", df)
        
     partition_dir = storage_partition.table_path("games")
     output_files = list(partition_dir.glob("*.parquet"))
     assert len(output_files) == 1
-    print(output_files)
-    assert pq.read_table(partition_dir).to_pylist() == data
+    assert pl.read_parquet(partition_dir).to_dicts() == data
 
 
 def test_store_batch_buffers_and_writes(storage_partition):
@@ -108,22 +80,22 @@ def test_store_batch_buffers_and_writes(storage_partition):
     output_files = list(partition_dir.glob("*.parquet"))
     assert len(output_files) == 1
 
-    table = pq.read_table(partition_dir)
-    assert len(table) == 1000
-    assert table.column("name").to_pylist()[0] == "Player0"
+    df = pl.read_parquet(partition_dir)
+    assert len(df) == 1000
+    assert df["name"].to_list()[0] == "Player0"
 
 
 def test_flush_writes_and_clears_buffer(storage_partition, tmp_path):
     # Don't include 'region' in data, let partitioning logic add it
-    storage_partition.buffer["games"] = [{"gameId": 1}, {"gameId": 2}]
-    storage_partition.buffer["players"] = [{"playerId": "abc"}]
+    storage_partition.buffer["games"] = pl.from_dicts([{"gameId": 1}, {"gameId": 2}])
+    storage_partition.buffer["players"] = pl.from_dicts([{"playerId": "abc"}])
 
     # Flush with region partition
     nbytes = storage_partition.flush()
 
     assert nbytes > 0
-    assert storage_partition.buffer["games"] == []
-    assert storage_partition.buffer["players"] == []
+    assert "games" not in storage_partition.buffer
+    assert "players" not in storage_partition.buffer
 
     # Validate file creation and content
     games_path = tmp_path / "basic/matches/games"
@@ -132,36 +104,26 @@ def test_flush_writes_and_clears_buffer(storage_partition, tmp_path):
     assert any(f.suffix == ".parquet" for f in games_path.iterdir())
     assert any(f.suffix == ".parquet" for f in players_path.iterdir())
 
-    table = pq.read_table(games_path)
-    assert table.num_rows == 2
-    assert set(table.column_names) == {"gameId", "region"}
-    assert table.column("region").to_pylist() == ["europe", "europe"]
+    df = pl.read_parquet(games_path)
+    assert len(df) == 2
+    assert set(df.columns) == {"gameId", "region"}
+    assert df["region"].to_list() == ["europe", "europe"]
 
 
-def test_load_to_polars(storage_partition, sample_parquet_file):
+def test_load_to_polars(storage_partition):
+    # Create dummy data
+    europe_df = pl.DataFrame({
+        "id": [1, 2],
+        "name": ["Alice", "Bob"],
+        "region": ["europe", "europe"]
+    })
+
+    # Save as partitioned Parquet
+    europe_df.write_parquet(storage_partition.table_path("players") / "region_europe-00000.parquet")
+
     # Load only europe region
     df = storage_partition.load_to_polars("players", ["name"])
 
     assert df.shape[0] == 2
     assert "name" in df.columns
     assert df["name"].to_list() == ["Alice", "Bob"]
-
-
-def test_store_polars_writes_partitioned_file(storage_partition):
-    df = pl.DataFrame({
-        "summoner_id": ["x1", "x2"],
-        "kills": [5, 6],
-    })
-
-    nbytes = storage_partition.store_polars("players", df)
-
-    assert nbytes > 0
-
-    partition_dir = storage_partition.table_path("players")
-    assert partition_dir.exists(), "Expected partition directory to exist"
-
-    output_files = list(partition_dir.glob("*.parquet"))
-    assert len(output_files) == 1
-
-    table = pq.read_table(partition_dir)
-    assert table.column("region").to_pylist() == ["europe"] * 2

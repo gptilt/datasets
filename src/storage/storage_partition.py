@@ -1,11 +1,20 @@
 from common import print
+from collections.abc import Iterable
 import datasets
 import os
-from pathlib import Path
 import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
 from storage import Storage
+
+
+def to_polars(batch, schema: pl.Schema | None = None):
+    if isinstance(batch, pl.DataFrame):
+        return batch
+    elif isinstance(batch, Iterable):
+        return pl.from_dicts(batch, schema)
+    else:
+        raise ValueError(f"Unsupported batch type {type(batch)}.")
 
 
 class StoragePartition(Storage):
@@ -16,16 +25,15 @@ class StoragePartition(Storage):
         dataset: str,
         tables: list[str],
         partition_col: str = None,
-        partition_val: str = None
+        partition_val: str = None,
+        table_schema: dict[str, pa.Schema] | None = {},
     ):
         super().__init__(root, schema, dataset, tables, file_extension='parquet')
-        self.target_batch_size = 1_000_000_000  # 1 GB
+        self.target_batch_size = 2_000_000_000  # 2 GB
         self.partition_col, self.partition_val = partition_col, partition_val
         
-        self.buffer = {
-            table_name: []
-            for table_name in tables
-        }
+        self.table_schema = table_schema
+        self.buffer = {}
         self.shard_id = { table_name: 0 for table_name in tables}
 
 
@@ -82,78 +90,45 @@ class StoragePartition(Storage):
         return leaf_dirs
 
 
-    def _add_partition_column_to_arrow_table(
-        self,
-        table: pa.Table,
-    ) -> pa.Table:
-        if self.partition_col not in table.schema.names:
-            col_array = pa.array([self.partition_val] * len(table))
-            table = table.append_column(self.partition_col, col_array)
-        
-        return table
+    def _add_partition_column_to_df(self, df: pl.DataFrame) -> pl.DataFrame:
+        if self.partition_col not in df.columns:
+            df = df.with_columns([
+                pl.lit(self.partition_val).alias(self.partition_col)
+            ])
+        return df
 
 
-    def _arrow_table_from_list_of_records(
-        self,
-        list_of_records: list[dict],
-        schema: pa.Schema | None = None,
-    ) -> pa.Table:
-        try:
-            # If `schema` is provided, it's used to construct the Arrow Table.
-            if schema:
-                return pa.Table.from_pylist(list_of_records, schema=schema)
-            else:
-                return pa.Table.from_pylist(list_of_records)
-        except pa.lib.ArrowInvalid:
-            # Troubleshoot single offending records
-            for record in list_of_records:
-                try:
-                    pa.Table.from_pylist([record], schema=schema)
-                except pa.lib.ArrowInvalid as e:
-                    raise ValueError(f"Failed to convert record {record} to Arrow Table: {e}")
-            raise
-
-    
     def _flush_table(
         self,
         table_name: str,
-        table: pa.Table,
+        df: pl.DataFrame,
     ) -> int:
         """
         Write to disk using pyarrow datasets.
         Overwrites existing dataset for simplicity.
         """
-        table = self._add_partition_column_to_arrow_table(table)
-        nbytes = table.nbytes
+        df = self._add_partition_column_to_df(df)
 
         ds = datasets.Dataset(
-            table,
+            df.to_arrow(),
             split=self.split(),
             info=datasets.DatasetInfo()
         )
         ds.to_parquet(f"{self.table_path(table_name)}/{self.split()}-{self.shard_id[table_name]:05d}.parquet")
         self.shard_id[table_name] += 1
 
-        return nbytes
+        return df.estimated_size()
     
 
-    def flush(
-        self,
-        dict_of_table_schema: dict[str, pa.Schema] = {},
-    ) -> int:
+    def flush(self) -> int:
         """
         Write any remaining buffered records to disk.
         Should be called explicitly after processing is complete.
         """
         nbytes = 0
         
-        for table_name, buffered_records in self.buffer.items():
-            if not buffered_records:
-                continue
-            schema = dict_of_table_schema.get(table_name)
-            table = self._arrow_table_from_list_of_records(buffered_records, schema)
-            nbytes += self._flush_table(table_name, table)
-            self.buffer[table_name] = []
+        for table_name in list(self.buffer.keys()):
+            nbytes += self._flush_table(table_name, self.buffer.pop(table_name))
         
         return nbytes
     
@@ -161,54 +136,38 @@ class StoragePartition(Storage):
     def store_batch(
         self,
         table_name: str,
-        list_of_records: list[dict],
-        schema: pa.Schema | None = None,
+        batch: list[dict] | pl.DataFrame,
     ) -> int:
         """
         Writes a batch of data to the dataset.
 
         Records are appended to the existing buffered list of records.
         If the complete table is of sufficient size, the buffer is flushed.
-        """
-        self.buffer[table_name].extend(list_of_records)
-        table = self._arrow_table_from_list_of_records(self.buffer[table_name], schema)
 
-        if table.nbytes >= self.target_batch_size:
-            nbytes = self._flush_table(table_name, table)
-            self.buffer[table_name] = []  # Clear buffer after writing
+        Args:
+            table_name (str): Name of the table to save the batch to.
+            batch (list[dict] | pl.DataFrame): Batch to store.
+        """
+        df = to_polars(batch, self.table_schema.get(table_name))
+        df = df.select(sorted(df.columns))
+
+        if table_name in self.buffer:
+            self.buffer[table_name] = df = pl.concat([df, self.buffer.get(table_name)])
+        else:
+            self.buffer[table_name] = df
+
+        if df.estimated_size() >= self.target_batch_size:
+            nbytes = self._flush_table(table_name, self.buffer.pop(table_name, df))
             return nbytes
         else:
             return 0
 
 
-    def store_polars(
-        self,
-        table_name: str,
-        df: pl.DataFrame,
-    ) -> int:
-        """
-        Write a Polars DataFrame to the dataset as a Parquet file,
-        converting it to an Arrow Table and applying partitioning if needed.
-
-        Args:
-            table_name (str): The name of the table to write to.
-            df (pl.DataFrame): The Polars DataFrame to write.
-
-        Returns:
-            int: Number of bytes written.
-        """
-        if df.is_empty():
-            print(f"Skipping write for empty DataFrame to table '{table_name}'")
-            return 0
-
-        table = df.to_arrow()
-        return self._flush_table(table_name, table)
-
-
     def load_to_polars(
         self,
         table_name: str,
-        columns: list[str] | None = None,
+        columns: list[str] | None = "*",
+        **filters: dict[str, str] | None
     ) -> pl.DataFrame:
         """
         Loads a partitioned Parquet dataset into a Polars DataFrame,
@@ -229,29 +188,19 @@ class StoragePartition(Storage):
         try:
             lazy_df = pl.scan_parquet(
                 f"{str(table_path)}/{self.split()}-*.parquet",
-                hive_partitioning=True,
+                schema=self.table_schema.get(table_name)
             )
         except FileNotFoundError:
             print(f"No parquet files found for table '{table_name}' at {table_path}.")
             return pl.DataFrame()
 
         # Apply column selection
-        if columns:
-            print(f"Selecting columns: {columns}")
-            select_cols = columns.copy()
+        lazy_df = lazy_df.select(columns)
 
-            try:
-                lazy_df = lazy_df.select(select_cols)
-            except pl.exceptions.ColumnNotFoundError as e:
-                print(f"Error selecting columns: {e}. Returning empty DataFrame.")
-                return pl.DataFrame()
+        for filter_col, filter_val in filters.items():
+            if isinstance(filter_val, Iterable) and not isinstance(filter_val, (str, bytes)):
+                lazy_df = lazy_df.filter(pl.col(filter_col).is_in(filter_val))
+            else:
+                lazy_df = lazy_df.filter(pl.col(filter_col) == filter_val)
 
-        # Collect the result
-        print(f"Collecting data for '{table_name}'...")
-        try:
-            df = lazy_df.collect()
-            print(f"Loaded DataFrame with shape: {df.shape}")
-            return df
-        except Exception as e:
-            print(f"Failed to collect dataset for table '{table_name}': {e}")
-            return pl.DataFrame()
+        return lazy_df.collect()
