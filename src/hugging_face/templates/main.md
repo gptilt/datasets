@@ -2,7 +2,7 @@
 {{ card_data }}
 ---
 
-# Dataset Card for {{ pretty_name }}
+# GPTilt: {{ pretty_name }}
 
 This dataset is part of the [GPTilt](https://github.com/gptilt) open-source initiative, aimed at democratizing access to high-quality LoL data for research and analysis, fostering public exploration, and advancing the community's understanding of League of Legends through data science and AI. It provides detailed data from high-elo matches.
 

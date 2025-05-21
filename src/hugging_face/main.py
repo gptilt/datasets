@@ -37,7 +37,7 @@ def main():
     schemas_and_datasets = {
         "basic": {
             "matches": {
-                "pretty_name": '10K League of Legends Challenger Matches',
+                "pretty_name": f'{args.count.upper()} League of Legends Challenger Matches',
                 "dataset_summary": "This dataset contains all data available in the Riot API for 10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
                 "tables": ["matches", "participants", "events"],
                 "splits": ["region_americas", "region_asia", "region_europe"],
@@ -46,8 +46,8 @@ def main():
         },
         "ultimate": {
             "events": {
-                "pretty_name": '1M Enriched Events from 10K LoL Challenger Matches',
-                "dataset_summary": "1M Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
+                "pretty_name": f'{args.count.upper()} Enriched Events from 10K LoL Challenger Matches',
+                "dataset_summary": f"{args.count.upper()} Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
                 "tables": ["events"],
                 "splits": ["region_americas", "region_asia", "region_europe"],
                 "purpose": "It provides a comprehensive profile of each event, complete with pre-game and game state information."
