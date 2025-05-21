@@ -20,8 +20,8 @@ Datasets are split into two tiers:
 The match dataset contains all data available in the Riot API for a given set of matches.
 Currently, the dataset can be found in the following sizes:
 
-- [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/lol-basic-matches-challenger-10k), includes over 20M events from ranked matches with at least one challenger player. The 10 largest regions are included.
-- *SOON* `100k` Challenger matches, includes over 200M events.
+- [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/lol-basic-matches-challenger-10k), includes over 15M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- *SOON* `100k` Challenger matches, includes over 150M events.
 
 ## Ultimate
 
@@ -31,8 +31,8 @@ The `ultimate` tier `events` dataset contains enriched events from a selection o
 
 Currently, the dataset can be found in the following sizes:
 
-- [Over `10M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-events-challenger-10m), includes over 10M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
-- *SOON* `100k` Challenger matches, includes over ~100M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- [Over `10M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-events-challenger-15m), includes over 15M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
+- *SOON* `100k` Challenger matches, includes ~150M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 
 ## Getting Started
 
