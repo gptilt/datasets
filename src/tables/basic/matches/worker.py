@@ -1,6 +1,46 @@
 from . import schema, transform
-from common import print, tqdm_range
+from common import print, work_generator
 import storage
+
+
+
+def process_match(
+    match_id: str,
+    region: str,
+    overwrite: bool,
+    storage_raw: storage.Storage,
+    storage_basic: storage.StoragePartition
+) -> tuple[dict, list[dict], list[dict]]:
+    print(f"[{region}] Processing match {match_id}...")
+
+    if not overwrite and storage_basic.has_records_in_all_tables(matchId=match_id):
+        print(f"[{region}] Match {match_id} already exists.")
+        return
+    
+    try:
+        info = storage_raw.read_files('match_info', record=match_id, region=region)
+    except FileNotFoundError:
+        print(f"[{region}] Match {match_id} not found in raw storage.")
+        return
+    
+    if info["info"]["queueId"] != 420:
+        print(f"[{region}] Match {match_id} is not ranked.")
+        return
+    timeline = storage_raw.read_files('match_timeline', record=match_id, region=region)
+
+    match, participants = transform.match_into_match_and_participants(
+        match_id=match_id,
+        match=info,
+        region=region,
+    )
+    events = transform.timeline_into_events(timeline=timeline, participants=participants)
+
+    print(f"[{region}] Storing match {match_id}...")
+    storage_basic.store_batch('matches', [match])
+    storage_basic.store_batch('participants', participants)
+    storage_basic.store_batch('events', events)
+
+    return match, participants, events
 
 
 def main(
@@ -22,62 +62,30 @@ def main(
         'matches',
         tables=['matches', 'participants', 'events'],
         partition_col="region",
-        partition_val=region
+        partition_val=region,
+        table_schema={"events": schema.EVENTS}
     )
-
-    def process_match(match_id: str) -> tuple[dict, list[dict], list[dict]]:
-        print(f"[{region}] Processing match {match_id}...")
-
-        if not overwrite and storage_basic.has_records_in_all_tables(matchId=match_id):
-            print(f"[{region}] Match {match_id} already exists.")
-            return
-        
-        try:
-            info = storage_raw.read_files('match_info', record=match_id, region=region)
-        except FileNotFoundError:
-            print(f"[{region}] Match {match_id} not found in raw storage.")
-            return
-        
-        if info["info"]["queueId"] != 420:
-            print(f"[{region}] Match {match_id} is not ranked.")
-            return
-        timeline = storage_raw.read_files('match_timeline', record=match_id, region=region)
-
-        match, participants = transform.match_into_match_and_participants(
-            match_id=match_id,
-            match=info,
+    
+    list_of_match_ids = [
+        filename.name.split('/')[-1].split('.json')[0]
+        for filename in storage_raw.find_files(
+            'match_info',
+            record='*',
             region=region,
-        )
-        events = transform.timeline_into_events(timeline=timeline, participants=participants)
+            count=int(count * 1.5)
+    )]
 
-        return match, participants, events
-        
-    list_of_match_ids = storage_raw.find_files(
-        'match_info',
-        record='*',
-        region=region,
-        count=int(count * 1.2)
-    )
-
-    matches, participants, events = [], [], []
-
-    real_count = 0
-    for i in tqdm_range(list_of_match_ids, desc=region):
-        if real_count == count:
-            continue
-        data = process_match(list_of_match_ids[i].name.split('/')[-1].split('.json')[0])
-        if data:
-            matches.append(data[0])
-            participants.extend(data[1])
-            events.extend(data[2])
-            real_count += 1
-         
-    print(f"[{region}] Storing {len(matches)} matches...")
-    storage_basic.store_batch('matches', matches)
-    storage_basic.store_batch('participants', participants)
-    storage_basic.store_batch('events', events, schema=schema.EVENTS)
+    for _ in work_generator(
+        list_of_match_ids,
+        process_match,
+        descriptor=region,
+        max_count=count,
+        # kwargs
+        overwrite=overwrite,
+        storage_raw=storage_raw,
+        storage_basic=storage_basic
+    ):
+        continue
 
     if flush:
-        storage_basic.flush(
-            {'events': schema.EVENTS},
-        )
+        storage_basic.flush()
