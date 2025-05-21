@@ -1,8 +1,7 @@
 import argparse
+from .card import create_dataset_card_template
 import huggingface_hub as hub
 import pathlib
-from riot_api import disclaimer
-import time
 
 
 def parse_args():
@@ -39,44 +38,52 @@ def main():
         "basic": {
             "matches": {
                 "pretty_name": '10K League of Legends Challenger Matches',
-                "dataset_summary": "10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
-                "tables": ["matches", "participants", "events"]
+                "dataset_summary": "This dataset contains all data available in the Riot API for 10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
+                "tables": ["matches", "participants", "events"],
+                "splits": ["region_americas", "region_asia", "region_europe"],
+                "purpose": "It's a clean version of the API's data, improved for clarity and usability."
             }
         },
         "ultimate": {
             "events": {
                 "pretty_name": '1M Enriched Events from 10K LoL Challenger Matches',
                 "dataset_summary": "1M Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
-                "tables": ["events"]
+                "tables": ["events"],
+                "splits": ["region_americas", "region_asia", "region_europe"],
+                "purpose": "It provides a comprehensive profile of each event, complete with pre-game and game state information."
             }
         }
     }
-    tables = schemas_and_datasets[args.schema][args.dataset]["tables"]
 
     dataset_id = f"lol-{args.schema}-{args.dataset}-challenger-{args.count}"
+    dataset_details = schemas_and_datasets[args.schema][args.dataset]
+    
     repo_id = f"gptilt/{dataset_id}"
 
     api = hub.HfApi()
-    for table in tables:
-        api.upload_folder(
-            repo_id=repo_id,
-            folder_path=pathlib.Path(args.root, args.schema, args.dataset, table),
-            path_in_repo=table,
-            repo_type="dataset",
-        )
+    api.upload_folder(
+        repo_id=repo_id,
+        folder_path=pathlib.Path(args.root, args.schema, args.dataset),
+        repo_type="dataset",
+    )
 
     card_data = hub.DatasetCardData(
-        pretty_name=schemas_and_datasets[args.schema][args.dataset]["pretty_name"],
-        dataset_summary=schemas_and_datasets[args.schema][args.dataset]["dataset_summary"],
-        multilinguality='monolingual',
-        config_names=tables
+        configs=[{
+            "config_name": table,
+            "data_files": [{
+                "split": split,
+                "path": f"{table}/{split}*.parquet"
+            } for split in dataset_details["splits"] ]
+        } for table in dataset_details["tables"] ]
     )
     card = hub.DatasetCard.from_template(
         card_data,
-        disclaimer=disclaimer.TEXT,
-        creation_date=time.strftime("%Y"),
-        id=dataset_id,
-        template_path=f"./src/hugging_face/templates/{args.schema}/{args.dataset}.md",
+        template_path=create_dataset_card_template(
+            args.schema,
+            args.dataset,
+            dataset_id=dataset_id,
+            dataset_details=dataset_details
+        ),
     )
     card.push_to_hub(
         repo_id=repo_id,

@@ -1,0 +1,1 @@
+5. **Staging & Transformation:** Raw data was parsed, and transformed into three structured tables (`matches`, `participants`, `events`).

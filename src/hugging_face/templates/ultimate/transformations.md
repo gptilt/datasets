@@ -1,0 +1,1 @@
+5. **Staging & Transformation:** Raw data was parsed, and transformed into the basic-tier dataset 'League of Legends Challenger Matches'. The matches dataset was then used to build the enriched events dataset.

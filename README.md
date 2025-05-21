@@ -20,16 +20,8 @@ Datasets are split into two tiers:
 The match dataset contains all data available in the Riot API for a given set of matches.
 Currently, the dataset can be found in the following sizes:
 
-- [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/basic-matches-challenger-10k), includes over 20M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/lol-basic-matches-challenger-10k), includes over 20M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 - *SOON* `100k` Challenger matches, includes over 200M events.
-
-This dataset consists of the following tables:
-
-- `match`: contains metadata regarding a match.
-- `participants`: links a match's `participantIds` to the player's `PUUID`, and includes all the player endgame information regarding a match.
-- `events`: contains all events from matches. Includes a custom `PARTICIPANT_FRAME` event type, which models the participant data at any frame (taken at `frameInterval` - which, in the public Riot API, is a minute). Additionally, all `position` fields in all events have been split into two unique fields `positionX` and `positionY`. Finally, a default position is added for item events (the respective team's spawn coordinates) and `DRAGON_SOUL_GIVEN` events (the dragon pit's coordinates).
-
-All match tables have a `matchId` column, making it possible to join tables with data from different regions without conflict (the `gameId` column, on the other hand, is not unique across regions).
 
 ## Ultimate
 
@@ -39,14 +31,8 @@ The `ultimate` tier `events` dataset contains enriched events from a selection o
 
 Currently, the dataset can be found in the following sizes:
 
-- [`15M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/ultimate-events-challenger-20m), includes over 15M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
-- *SOON* `100k` Challenger matches, includes over ~150M events from ranked matches with at least one challenger player. The 10 largest regions are included.
-
-This dataset consists of the following table:
-
-- `events`: contains all events from a selection of matches. More precise context is provided for each event, complete with updated player levels, inventories, pregame selections such as champions, runes and summoner spells.
-
-All events have a `matchId` column, making it compatible with all `basic` tier `matches` tables.
+- [Over `10M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-events-challenger-10m), includes over 10M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
+- *SOON* `100k` Challenger matches, includes over ~100M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 
 ## Getting Started
 
