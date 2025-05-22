@@ -2,6 +2,8 @@
 
 ### May 22, 2025
 
+- Account for system-assigned items, such as the support item assignment on game start.
+
 ### May 18, 2025
 
 - Challenge and mission information were removed from the `match` table.
