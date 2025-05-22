@@ -11,7 +11,7 @@ def process_match(
     storage_raw: storage.Storage,
     storage_basic: storage.StoragePartition
 ) -> tuple[dict, list[dict], list[dict]]:
-    print(f"[{region}] Processing match {match_id}...")
+    # print(f"[{region}] Processing match {match_id}...")
 
     if not overwrite and storage_basic.has_records_in_all_tables(matchId=match_id):
         print(f"[{region}] Match {match_id} already exists.")
@@ -35,12 +35,7 @@ def process_match(
     )
     events = transform.timeline_into_events(timeline=timeline, participants=participants)
 
-    print(f"[{region}] Storing match {match_id}...")
-    storage_basic.store_batch('matches', [match])
-    storage_basic.store_batch('participants', participants)
-    storage_basic.store_batch('events', events)
-
-    return match, participants, events
+    return [match], participants, events
 
 
 def main(
@@ -61,9 +56,9 @@ def main(
         'basic',
         'matches',
         tables=['matches', 'participants', 'events'],
+        table_schema={"matches": schema.MATCHES, "events": schema.EVENTS},
         partition_col="region",
         partition_val=region,
-        table_schema={"events": schema.EVENTS}
     )
     
     list_of_match_ids = [
@@ -75,7 +70,8 @@ def main(
             count=int(count * 1.5)
     )]
 
-    for _ in work_generator(
+    matches, participants, events = [], [], []
+    for i, data in enumerate(work_generator(
         list_of_match_ids,
         process_match,
         descriptor=region,
@@ -84,8 +80,24 @@ def main(
         overwrite=overwrite,
         storage_raw=storage_raw,
         storage_basic=storage_basic
-    ):
-        continue
+    )):
+        matches.extend(data[0])
+        participants.extend(data[1])
+        events.extend(data[2])
+
+        if i % 500 == 0:
+            print(f"[{region}] Storing batch...")
+            storage_basic.store_batch('matches', matches)
+            storage_basic.store_batch('participants', participants)
+            storage_basic.store_batch('events', events)
+            matches.clear()
+            participants.clear()
+            events.clear()
+
+    print(f"[{region}] Storing batch...")
+    storage_basic.store_batch('matches', matches)
+    storage_basic.store_batch('participants', participants)
+    storage_basic.store_batch('events', events)
 
     if flush:
         storage_basic.flush()

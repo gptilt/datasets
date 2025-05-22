@@ -68,27 +68,24 @@ def match_into_match_and_participants(
     match_info['matchId'] = match_id
     # Add region
     match_info['region'] = region
-    # Add server
-    match_info['server'] = re.match(r"[a-zA-Z]+", match_id).group(0) or ""
 
-    # Add ban information to participant
+    # Add team information to participant
     team_info = {
         team['teamId']: {
             'bans': team['bans'],
-            'feats': team['feats'],
+            'feats': team['feats'] if 'feats' in team else {},
             'objectives': team['objectives'],
             'win': team['win'],
         }
         for team in match_info.pop('teams')
     }
-
     # Normalize team data
     for team_id, team in team_info.items():
         team_prefix = f"team_{team_id}_"
 
         # Feats of Strength
         for feat_type, feat_state in team['feats'].items():
-            match_info[f"{team_prefix}{feat_type}"] = feat_state
+            match_info[f"{team_prefix}{feat_type}"] = feat_state['featState']
         
         # Objectives
         for objective_name, objective_data in team['objectives'].items():
@@ -138,6 +135,17 @@ def match_into_match_and_participants(
 
     # Split participants from match
     participants = match_info.pop('participants')
+    
+    # Remove unnecessary/redundant fields
+    for key in [
+        'gameCreation',  # gameStartTimestamp is more accurate
+        'gameMode',
+        'gameName',
+        'gameType',
+        'mapId',
+        'queueId',
+    ]:
+        match_info.pop(key)
 
     return match_info, participants
 
@@ -193,6 +201,24 @@ def killed_event_from_kill_event(
     return killed_event
 
 
+def participant_id_from_auto_item_event(
+    inventories: dict[list[str]],
+    event: dict
+):
+    assert event["participantId"] == 0
+    if (
+        event['timestamp'] == 0
+        and event['type'].startswith('ITEM_')
+    ):
+        match event['itemId']:
+            case 3865:  # World Atlas
+                if event['itemId'] not in inventories[5]:
+                    return 5
+                elif event['itemId'] not in inventories[10]:
+                    return 10
+    return 0
+
+
 def update_participant_inventory(
     inventory: list[int],
     event: dict,
@@ -244,7 +270,7 @@ def timeline_into_events(
     # Preprocess events and collect all unique keys
     all_columns = set(["eventId"])
     # Keep track of inventories
-    inventory = {participant['participantId']: [] for participant in participants}
+    inventories = {participant['participantId']: [] for participant in participants}
 
     for event in list_of_events:
         event['matchId'] = timeline['metadata']['matchId']
@@ -294,8 +320,12 @@ def timeline_into_events(
             )
         # Add inventory to ITEM_ events
         if event['type'].startswith('ITEM_'):
+            # Items can be auto-assigned to players
+            if event["participantId"] == 0:
+                event["participantId"] = participant_id_from_auto_item_event(inventories, event)
+
             event['inventory'] = update_participant_inventory(
-                inventory[event["participantId"]],
+                inventories[event["participantId"]],
                 event,
             ).copy()
 

@@ -26,7 +26,7 @@ class StoragePartition(Storage):
         tables: list[str],
         partition_col: str = None,
         partition_val: str = None,
-        table_schema: dict[str, pa.Schema] | None = {},
+        table_schema: dict[str, pa.Schema] = {},
     ):
         super().__init__(root, schema, dataset, tables, file_extension='parquet')
         self.target_batch_size = 2_000_000_000  # 2 GB

@@ -1,5 +1,7 @@
 ## Changelist
 
+### May 22, 2025
+
 ### May 18, 2025
 
 - Challenge and mission information were removed from the `match` table.

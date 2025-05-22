@@ -29,6 +29,7 @@ def work_generator(
         descriptor (str): Descriptor for the tqdm range.
         max_count (int, optional): Maximum number of data pieces to produce.
     Yields:
+        count (int): Count of work pieces successfully processed.
         data (any): For each work piece.
     """
     real_count = 0
@@ -42,5 +43,5 @@ def work_generator(
             **kwargs
         )
         if data is not None:
-            yield data
             real_count += 1
+            yield data
