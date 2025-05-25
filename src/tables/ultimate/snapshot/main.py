@@ -25,7 +25,14 @@ def main(
         matchId=list_of_match_ids
     )
 
-    df_before_snapshot = df_events.filter(pl.col("timestamp").le(910000))
+    df_before_snapshot = (
+        df_events
+        .sort(["matchId", "timestamp"])
+        .with_columns([
+            pl.col("winningTeam").fill_null(strategy="backward").over("matchId")
+        ])
+        .filter(pl.col("timestamp").le(910000))
+    )
     df_snapshot = transform.snapshot_from_events(df_before_snapshot)
 
     print(f"[{region}] Storing batch...")

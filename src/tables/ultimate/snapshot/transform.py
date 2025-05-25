@@ -7,21 +7,36 @@ def counts_from_events(
     filter: pl.Expr,
     prefix: str
 ):
+    participant_ids = [str(i) for i in range(1, 11)]
+
     df_counts = (
         df
         .filter(filter)
         .group_by(["matchId", "participantId"])
         .len()
         .pivot(
-            on="participantId",
+            values="len",
             index="matchId",
+            columns="participantId"
         )
     )
-    return df_counts.rename({str(i): f"{prefix}_{i}" for i in df_counts.columns if i != "matchId"})
+
+    # Ensure all participant columns exist
+    for pid in participant_ids:
+        if pid not in df_counts.columns:
+            df_counts = df_counts.with_columns(pl.lit(0).alias(pid))
+
+        # Rename participant columns with prefix
+        df_counts = df_counts.rename({pid: f"{prefix}_{pid}"})
+
+    # Reorder columns: matchId first, then sorted participants
+    ordered_columns = ["matchId"] + [f"{prefix}_{pid}" for pid in participant_ids]
+    
+    return df_counts.select(ordered_columns)
 
 
 def snapshot_from_events(
-    df_events_up_to_snapshot: pl.DataFrame
+    df_events_up_to_snapshot: pl.DataFrame,
 ):
     df_participant_events_before_snapshot = df_events_up_to_snapshot.select([
         "matchId",
@@ -107,9 +122,12 @@ def snapshot_from_events(
         df_events_up_to_snapshot
         .select([
             'matchId',
+            'gameStartTimestamp',
+            'gameVersion',
             'eventId',
             'timestamp',
             'platformId',
+            'winningTeam',
             *[
                 f"{column_prefix}{i}"
                 for i in range(1, 11)
@@ -137,7 +155,7 @@ def snapshot_from_events(
                 ]
             ]
         ])
-        .sort(["matchId", "eventId", "timestamp"])
+        .sort(["matchId", "eventId"])
         .group_by("matchId", maintain_order=True)
         .last()
         .join(
@@ -146,5 +164,5 @@ def snapshot_from_events(
             how="left"
         )
     )
-    
+
     return df_snapshot
