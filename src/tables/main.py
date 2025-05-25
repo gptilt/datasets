@@ -10,7 +10,7 @@ def parse_args():
 
     schemata = {
         "basic": ["matches"],
-        "ultimate": ["events"],
+        "ultimate": ["events", "snapshot"],
     }
 
     def add_common_args(subparser):
@@ -36,7 +36,7 @@ def main():
     print(f"Root directory: {args.root}")
 
     # Import the appropriate worker based on the schema
-    module_path = f".{args.schema}.{args.dataset.replace('-', '_')}.worker"  # Importlib doesn't allow hyphens
+    module_path = f".{args.schema}.worker"
 
     # Dynamically import the module and get the worker
     try:
@@ -49,6 +49,7 @@ def main():
         target=worker_module.main,
         args=(
             args.root,
+            args.dataset,
             args.count // len(REGIONS_AND_PLATFORMS.keys()),
             args.flush,
             args.overwrite,

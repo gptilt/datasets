@@ -18,7 +18,7 @@ Datasets are split into two tiers:
 ### Matches
 
 The match dataset contains all data available in the Riot API for a given set of matches.
-Currently, the dataset can be found in the following sizes:
+Currently, the dataset can be found in the following variants:
 
 - [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/lol-basic-matches-challenger-10k), includes over 15M events from ranked matches with at least one challenger player. The 10 largest regions are included.
 - *SOON* `100k` Challenger matches, includes over 150M events.
@@ -29,10 +29,17 @@ Currently, the dataset can be found in the following sizes:
 
 The `ultimate` tier `events` dataset contains enriched events from a selection of matches from the Riot Games API. This dataset was specifically designed for time series analysis, with all events being timestamped and providing improved (compared to the `basic` tier `events` dataset) contextual information about every event.
 
-Currently, the dataset can be found in the following sizes:
+Currently, the dataset can be found in the following variants:
 
-- [Over `10M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-events-challenger-15m), includes over 15M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
-- *SOON* `100k` Challenger matches, includes ~150M events from ranked matches with at least one challenger player. The 10 largest regions are included.
+- [Over `10M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-events-challenger-10m), includes over 10M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
+
+### Snapshot
+
+The `ultimate` tier `snapshot` dataset contains snapshots from a selection of matches from the Riot Games API. This dataset was specifically designed for isolated estimation/classification, namely win probability estimation, with all the relevant game state information included.
+
+Currently, the dataset can be found in the following variants:
+
+- [Snapshots at 15 minutes events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-snapshot-challenger-15min). Events were enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels), then a snapshot at 15 minutes was taken. The 10 largest regions are included.
 
 ## Getting Started
 

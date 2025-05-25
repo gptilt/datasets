@@ -1,4 +1,4 @@
-from . import schema, transform
+from .matches import schema, transform
 from common import print, work_generator
 import storage
 
@@ -41,6 +41,7 @@ def process_match(
 def main(
     region: str,
     root: str,
+    dataset: str,
     count: int = 1000,
     flush: bool = True,
     overwrite: bool = False,
@@ -54,7 +55,7 @@ def main(
     storage_basic = storage.StoragePartition(
         root,
         'basic',
-        'matches',
+        dataset,
         tables=['matches', 'participants', 'events'],
         table_schema={"matches": schema.MATCHES, "events": schema.EVENTS},
         partition_col="region",

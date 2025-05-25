@@ -23,9 +23,9 @@ def parse_args():
         help="Dataset to upload."
     )
     parser.add_argument(
-        "--count",
+        "--variant",
         required=True,
-        help="Number of samples in the dataset."
+        help="Dataset variant. Can be the number of samples."
     )
 
     return parser.parse_args()
@@ -37,25 +37,32 @@ def main():
     schemas_and_datasets = {
         "basic": {
             "matches": {
-                "pretty_name": f'{args.count.upper()} League of Legends Challenger Matches',
+                "pretty_name": f'{args.variant.upper()} League of Legends Challenger Matches',
                 "dataset_summary": "This dataset contains all data available in the Riot API for 10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
                 "tables": ["matches", "participants", "events"],
                 "splits": ["region_americas", "region_asia", "region_europe"],
-                "purpose": "It's a clean version of the API's data, improved for clarity and usability."
+                "purpose": "It's a clean version of the API's data, improved for clarity and usability.",
             }
         },
         "ultimate": {
             "events": {
-                "pretty_name": f'{args.count.upper()} Enriched Events from 10K LoL Challenger Matches',
-                "dataset_summary": f"{args.count.upper()} Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
+                "pretty_name": f'{args.variant.upper()} Enriched Events from 10K LoL Challenger Matches',
+                "dataset_summary": f"{args.variant.upper()} Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
                 "tables": ["events"],
                 "splits": ["region_americas", "region_asia", "region_europe"],
-                "purpose": "It provides a comprehensive profile of each event, complete with pre-game and game state information."
+                "purpose": "It provides a comprehensive profile of each event, complete with pre-game and game state information.",
+            },
+            "snapshot": {
+                "pretty_name": f"League of Legends Challenger Matches' Snapshots At 15 Minutes",
+                "dataset_summary": f"Snapshots of League of Legends Matches taken at 15 minutes, taken from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
+                "tables": ["snapshot"],
+                "splits": ["region_americas", "region_asia", "region_europe"],
+                "purpose": "Provides a complete snapshot of the game at 15 minutes.",
             }
         }
     }
 
-    dataset_id = f"lol-{args.schema}-{args.dataset}-challenger-{args.count}"
+    dataset_id = f"lol-{args.schema}-{args.dataset}-challenger-{args.variant}"
     dataset_details = schemas_and_datasets[args.schema][args.dataset]
     
     repo_id = f"gptilt/{dataset_id}"

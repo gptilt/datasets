@@ -11,7 +11,9 @@ class Storage:
         tables: list[str],
         file_extension: str = 'json'
     ):
+        self.root = root
         self.schema = schema
+        self.dataset = dataset
         self.root_path = Path(root, schema, dataset)
         self.tables = tables
         self.file_extension = file_extension

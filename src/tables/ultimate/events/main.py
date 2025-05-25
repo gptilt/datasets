@@ -1,10 +1,10 @@
 from . import transform
-from common import print, work_generator
+from common import print
 import polars as pl
 import storage
 
 
-def enrich_events(
+def main(
     list_of_match_ids: list[str],
     region: str,
     storage_basic: storage.StoragePartition,
@@ -39,13 +39,11 @@ def enrich_events(
     ])
 
     # To each participant frame, add the pre-game data
-    print(f"[{region}] Enriching events with pregame data...")
     df_events_with_pregame_data = transform.enrich_events_with_pregame_data(
         df_events, df_participants
     )
 
     # Add inventory context to each event
-    print(f"[{region}] Enriching events with participant inventories...")
     df_events_with_inventory = transform.enrich_events_with_inventory_data(
         df_events_with_pregame_data,
         df_item_events=df_events.filter(
@@ -59,55 +57,28 @@ def enrich_events(
     )
 
     # Update participant levels to reflect the last level-up event
-    print(f"[{region}] Enriching events with participant levels...")
     df_events_with_levels = transform.enrich_events_with_levels(
         df_events_with_inventory,
         df_level_up_events=df_events.filter(pl.col("type") == "LEVEL_UP")
     )
 
+    # Add general match information
+    df_matches = storage_basic.load_to_polars(
+        "matches",
+        matchId=list_of_match_ids
+    ).select([
+        "gameStartTimestamp",
+        "gameVersion",
+        "matchId",
+        "platformId"
+    ])
+    df_events_with_matches = df_events_with_levels.join(
+        df_matches,
+        on=["matchId"],
+        how="inner"
+    )
+
     print(f"[{region}] Storing batch...")
-    storage_ultimate.store_batch("events", df_events_with_levels)
+    storage_ultimate.store_batch("events", df_events_with_matches)
 
     return df_events_with_levels
-
-
-def main(
-    region: str,
-    root: str,
-    count: int = 1000,
-    flush: bool = True,
-    overwrite: bool = False,
-):
-    storage_basic = storage.StoragePartition(
-        root=root,
-        schema="basic",
-        dataset="matches",
-        tables=["matches", "participants", "events"],
-        partition_col="region",
-        partition_val=region
-    )
-    storage_ultimate = storage.StoragePartition(
-        root=root,
-        schema="ultimate",
-        dataset="events",
-        tables=["events"],
-        partition_col="region",
-        partition_val=region
-    )
-
-    list_of_match_ids = storage_basic.load_to_polars("matches", ["matchId"])
-    
-    for _ in work_generator(
-        list_of_match_ids,
-        enrich_events,
-        descriptor=region,
-        step=count // 10,
-        # kwargs
-        storage_basic=storage_basic,
-        storage_ultimate=storage_ultimate
-    ):
-        continue
-
-    if flush:
-        storage_ultimate.flush()
-    
