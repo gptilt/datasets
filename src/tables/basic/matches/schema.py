@@ -173,7 +173,8 @@ EVENTS = {
     # Items
     'afterId': pl.Int32,
     'beforeId': pl.Int32,
-    'inventory': pl.List(pl.Int32),
+    'inventoryIds': pl.List(pl.Int32),
+    'inventoryCounts': pl.List(pl.Int8),
     'itemId': pl.Int32,
     # Jungle
     'jungleMinionsKilled': pl.Int16,

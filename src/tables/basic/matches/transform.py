@@ -1,6 +1,6 @@
+from .inventory import LIST_OF_CONSUMABLES, Inventory
 from dorans import death
 import json
-import re
 
 
 def find_closest_event(
@@ -202,7 +202,7 @@ def killed_event_from_kill_event(
 
 
 def participant_id_from_auto_item_event(
-    inventories: dict[list[str]],
+    inventories: dict[Inventory],
     event: dict
 ):
     assert event["participantId"] == 0
@@ -212,32 +212,11 @@ def participant_id_from_auto_item_event(
     ):
         match event['itemId']:
             case 3865:  # World Atlas
-                if event['itemId'] not in inventories[5]:
+                if event['itemId'] not in inventories[5].dict:
                     return 5
-                elif event['itemId'] not in inventories[10]:
+                elif event['itemId'] not in inventories[10].dict:
                     return 10
     return 0
-
-
-def update_participant_inventory(
-    inventory: list[int],
-    event: dict,
-) -> dict:
-    """
-    Update the inventory of a participant based on the event.
-    """
-    if event['type'] == 'ITEM_PURCHASED':
-        inventory.append(event['itemId'])
-    elif event['type'] in ('ITEM_SOLD', 'ITEM_DESTROYED'):
-        if event['itemId'] in inventory:
-            inventory.remove(event['itemId'])
-    elif event['type'] == 'ITEM_UNDO':
-        if event['afterId'] == 0 and event['beforeId'] in inventory:  # Undo purchase
-            inventory.remove(event['beforeId'])
-        else:  # Undo sell
-            inventory.append(event['afterId'])
-    
-    return inventory
 
 
 def objective_bounty_start_from_prestart(event: dict):
@@ -264,15 +243,36 @@ def timeline_into_events(
     ]
 
     # Add events from timeline
-    for frame in timeline['info']['frames']:
+    list_of_frames_sorted = sorted(timeline['info']['frames'], key=lambda d: d['timestamp'])
+    for frame in list_of_frames_sorted:
         list_of_events.extend(frame['events'])
-    
+    # Sort events
+    # type_order = {'ITEM_PURCHASED': 0, 'ITEM_DESTROYED': 1}
+    list_of_events_sorted = sorted(
+        list_of_events,
+        key=lambda d: (
+            # Primary sort by timestamp
+            d['timestamp'],
+            # Secondary for grouping by item event
+            (
+                # For non-consumables, normal type sorting
+                d['type'] if d.get('itemId') not in LIST_OF_CONSUMABLES
+                # For consumables, invert type order
+                else {
+                    'ITEM_PURCHASED': 'A',
+                    'ITEM_DESTROYED': 'Z'
+                }.get(d['type'], d['type'])
+            )
+        )
+    )
+    # list_of_events_sorted = list_of_events #sorted(list_of_events, key=lambda d: d['timestamp'])
+
     # Preprocess events and collect all unique keys
     all_columns = set(["eventId"])
     # Keep track of inventories
-    inventories = {participant['participantId']: [] for participant in participants}
+    inventories = {participant['participantId']: Inventory() for participant in participants}
 
-    for event in list_of_events:
+    for event in list_of_events_sorted:
         event['matchId'] = timeline['metadata']['matchId']
         event.pop('gameId', None)
         
@@ -297,25 +297,25 @@ def timeline_into_events(
                     for participant in participants
                     if participant['participantId'] == event.get('participantId')
                 ] if 'participantId' in event else None,
-                list_of_events=list_of_events
+                list_of_events=list_of_events_sorted
             )
         # Add respawn event
         if event['type'] == 'CHAMPION_KILL':
-            list_of_events.append(
-                respawn_event_from_kill_event(event, list_of_events)
+            list_of_events_sorted.append(
+                respawn_event_from_kill_event(event, list_of_events_sorted)
             )
         # Add numberOfAssists to all _KILL events
         if event["type"].endswith("_KILL"):
             event['numberOfAssists'] = len(event.get('assistingParticipantIds', []))
         # Split KILL events into KILL and ASSIST
         if 'assistingParticipantIds' in event:
-            list_of_events.extend(assist_events_from_kill_event(
+            list_of_events_sorted.extend(assist_events_from_kill_event(
                 event,
                 event.pop("assistingParticipantIds")
             ))
         # Split CHAMPION_KILL events into KILL and KILLED
         if event["type"] == "CHAMPION_KILL":
-            list_of_events.append(
+            list_of_events_sorted.append(
                 killed_event_from_kill_event(event)
             )
         # Add inventory to ITEM_ events
@@ -324,14 +324,18 @@ def timeline_into_events(
             if event["participantId"] == 0:
                 event["participantId"] = participant_id_from_auto_item_event(inventories, event)
 
-            event['inventory'] = update_participant_inventory(
-                inventories[event["participantId"]],
-                event,
-            ).copy()
+            inventories[event["participantId"]].process_event(
+                event_type=event['type'],
+                timestamp=event['timestamp'],
+                item_id=event.get('itemId')
+            )
+            list_of_ids, list_of_counts = inventories[event["participantId"]].get_items_and_counts()
+            event['inventoryIds'] = list_of_ids
+            event['inventoryCounts'] = list_of_counts
 
         # Add objective bounty start event from announcement
         if event['type'] == 'OBJECTIVE_BOUNTY_PRESTART':
-            list_of_events.append(
+            list_of_events_sorted.append(
                 objective_bounty_start_from_prestart(event)
             )
         
@@ -341,4 +345,4 @@ def timeline_into_events(
     return [{
         col: event.get(col) if col != "eventId" else event_id
         for col in all_columns
-    } for event_id, event in enumerate(list_of_events) ]
+    } for event_id, event in enumerate(list_of_events_sorted) ]

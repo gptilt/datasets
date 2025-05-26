@@ -70,7 +70,13 @@ def enrich_events_with_inventory_data(
     """
     # To each item event, add the inventory
     # Add inventory context to each event
-    df_inventories = df_item_events.select("matchId", "participantId", "eventId", "inventory")
+    df_inventories = df_item_events.select(
+        "matchId",
+        "participantId",
+        "eventId",
+        "inventoryIds",
+        "inventoryCounts"
+    )
     
     df_inventories_pivoted = (
         df_inventories.pivot(
@@ -82,8 +88,8 @@ def enrich_events_with_inventory_data(
         .sort(["matchId", "eventId"])
         # Fill forward to propagate the last known level
         .fill_null(strategy="forward")
-        .rename({str(i): f"inventory_{i}" for i in range(1, 11)})
     )
+
     # Join-asof inventory info into all events
     return df_events.sort(
         ["matchId", "eventId"]

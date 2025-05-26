@@ -25,13 +25,27 @@ def main(
         matchId=list_of_match_ids
     )
 
+    # Find matchIds with any timestamp ≥ snapshot time
+    SNAPSHOT_TIME_IN_MS = 900_000
+    df_long_enough_matches = df_events.group_by("matchId").agg(
+        pl.col("timestamp").max().alias("max_timestamp")
+    ).filter(
+        pl.col("max_timestamp") >= SNAPSHOT_TIME_IN_MS
+    )["matchId"]
+    
     df_before_snapshot = (
         df_events
+        # Ensure all matches are long enough
+        .filter(
+            pl.col("matchId").is_in(df_long_enough_matches)
+        )
+        # Sort by timestamp and backfill the winningTeam (target variable)
         .sort(["matchId", "timestamp"])
         .with_columns([
             pl.col("winningTeam").fill_null(strategy="backward").over("matchId")
         ])
-        .filter(pl.col("timestamp").le(910000))
+        # Add a 10 second tolerance, to ensure the snapshot's participant frame is included.
+        .filter(pl.col("timestamp").le(SNAPSHOT_TIME_IN_MS + 10_000))
     )
     df_snapshot = transform.snapshot_from_events(df_before_snapshot)
 

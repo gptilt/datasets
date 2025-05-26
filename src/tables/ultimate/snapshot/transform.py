@@ -133,7 +133,8 @@ def snapshot_from_events(
                 for i in range(1, 11)
                 for column_prefix in [
                     'currentGold_',
-                    'inventory_',
+                    'inventoryIds_',
+                    'inventoryCounts_',
                     'jungleMinionsKilled_',
                     'level_',
                     'minionsKilled_',
