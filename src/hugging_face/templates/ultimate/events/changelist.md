@@ -1,5 +1,9 @@
 ## Changelist
 
+### May 27, 2025
+
+- Divided splits into `train` and `test`.
+
 ### May 26, 2025
 
 - Per-player inventories (`inventory_`) were split into padded (thus, equal-length) inventory item IDs (`inventoryIds_`) and inventory item counts (`inventoryCounts_`).

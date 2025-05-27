@@ -16,7 +16,8 @@ def main(
         dataset="events",
         tables=["events"],
         partition_col="region",
-        partition_val=region
+        partition_val=region,
+        split=storage_ultimate.split
     )
     # Load dataframes
     print(f"[{region}] Loading dataframes from storage...")

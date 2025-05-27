@@ -155,7 +155,7 @@ def snapshot_from_events(
                 ]
             ]
         ])
-        .sort(["matchId", "eventId"])
+        .sort(["matchId", "timestamp"])
         .group_by("matchId", maintain_order=True)
         .last()
         .join(

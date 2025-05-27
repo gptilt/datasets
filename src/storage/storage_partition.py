@@ -26,20 +26,22 @@ class StoragePartition(Storage):
         tables: list[str],
         partition_col: str = None,
         partition_val: str = None,
+        split: str = 'train',
         table_schema: dict[str, pa.Schema] = {},
     ):
         super().__init__(root, schema, dataset, tables, file_extension='parquet')
 
         self.target_batch_size = 2_000_000_000  # 2 GB
         self.partition_col, self.partition_val = partition_col, partition_val
+        self.split = split
         
         self.table_schema = table_schema
         self.buffer = {}
         self.shard_id = { table_name: 0 for table_name in tables}
 
 
-    def split(self) -> str:
-        return "_".join((self.partition_col, self.partition_val))
+    def split_name(self) -> str:
+        return "_".join((self.split, self.partition_col, self.partition_val))
     
 
     def has_records_in_all_tables(self, **kwargs):
@@ -112,10 +114,10 @@ class StoragePartition(Storage):
 
         ds = datasets.Dataset(
             df.to_arrow(),
-            split=self.split(),
+            split=self.split_name(),
             info=datasets.DatasetInfo()
         )
-        ds.to_parquet(f"{self.table_path(table_name)}/{self.split()}-{self.shard_id[table_name]:05d}.parquet")
+        ds.to_parquet(f"{self.table_path(table_name)}/{self.split_name()}-{self.shard_id[table_name]:05d}.parquet")
         self.shard_id[table_name] += 1
 
         return df.estimated_size()
@@ -188,7 +190,7 @@ class StoragePartition(Storage):
 
         try:
             lazy_df = pl.scan_parquet(
-                f"{str(table_path)}/{self.split()}-*.parquet",
+                f"{str(table_path)}/{self.split_name()}-*.parquet",
                 schema=self.table_schema.get(table_name)
             )
         except FileNotFoundError:

@@ -1,5 +1,9 @@
 ## Changelist
 
+### May 27, 2025
+
+- Removed games that ended in a remake.
+
 ### May 26, 2025
 
 - Refactored inventory generation, splitting it into two output columns: `inventoryIds` and `inventoryCounts`, containing item IDs and their respective counts, respectively. Fixed the inventory algorithm to handle `ITEM_UNDO` events correctly. Both columns are padded to a maximum length of 8, making them easier to work with (e.g. when performing column explosion in `pandas`/`polars`).

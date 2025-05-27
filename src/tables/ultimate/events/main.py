@@ -24,7 +24,6 @@ def main(
         "matchId",
         "participantId",
         "championId",
-        "teamId",
         "summoner1Id",
         "summoner2Id",
         "rune_primary_0",
