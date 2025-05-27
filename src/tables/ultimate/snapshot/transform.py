@@ -124,7 +124,6 @@ def snapshot_from_events(
             'matchId',
             'gameStartTimestamp',
             'gameVersion',
-            'eventId',
             'timestamp',
             'platformId',
             'winningTeam',
