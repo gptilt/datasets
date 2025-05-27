@@ -33,6 +33,12 @@ def parse_args():
 
 def main():
     args = parse_args()
+    regions = ["region_americas", "region_asia", "region_europe"]
+    splits = [
+        f"{split}_{region}"
+        for region in regions
+        for split in ["train", "test"]
+    ]
 
     schemas_and_datasets = {
         "basic": {
@@ -40,7 +46,7 @@ def main():
                 "pretty_name": f'{args.variant.upper()} League of Legends Challenger Matches',
                 "dataset_summary": "This dataset contains all data available in the Riot API for 10,000 ranked League of Legends matches from the Challenger tier in 10 different regions.",
                 "tables": ["matches", "participants", "events"],
-                "splits": ["region_americas", "region_asia", "region_europe"],
+                "splits": regions,
                 "purpose": "It's a clean version of the API's data, improved for clarity and usability.",
             }
         },
@@ -49,14 +55,14 @@ def main():
                 "pretty_name": f'{args.variant.upper()} Enriched Events from 10K LoL Challenger Matches',
                 "dataset_summary": f"{args.variant.upper()} Enriched Events from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
                 "tables": ["events"],
-                "splits": ["region_americas", "region_asia", "region_europe"],
+                "splits": splits,
                 "purpose": "It provides a comprehensive profile of each event, complete with pre-game and game state information.",
             },
             "snapshot": {
                 "pretty_name": f"League of Legends Challenger Matches' Snapshots At 15 Minutes",
                 "dataset_summary": f"Snapshots of League of Legends Matches taken at 15 minutes, taken from 10,000 ranked LoL matches from the Challenger tier in 10 different regions.",
                 "tables": ["snapshot"],
-                "splits": ["region_americas", "region_asia", "region_europe"],
+                "splits": splits,
                 "purpose": "Provides a complete snapshot of the game at 15 minutes.",
             }
         }
