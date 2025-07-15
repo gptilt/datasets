@@ -1,5 +1,9 @@
 ## Changelist
 
+### Jul 15
+
+- Replaced `gameVersion` (e.g. `15.4.668.4304`) by `patch` (`15.4`).
+
 ### May 27, 2025
 
 - Removed games that ended in a remake.

@@ -68,6 +68,9 @@ def match_into_match_and_participants(
     match_info['matchId'] = match_id
     # Add region
     match_info['region'] = region
+    # Retain only the patch
+    match_info['patch'] = '.'.join(match_info['gameVersion'].split('.')[:2])
+    match_info.pop('gameVersion')
 
     # Add team information to participant
     team_info = {
