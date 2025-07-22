@@ -59,12 +59,15 @@ def main(
 
     df_match_ids_with_game_version = storage_basic.load_to_polars(
         "matches",
-        ["matchId", "gameVersion"]
-    )[:count]
+        ["matchId", "gameVersion", "winningTeam"]
+    )[:count].with_columns(
+        # Concatenate stratification columns to produce a single stratify label
+        pl.concat_str(["gameVersion", "winningTeam"], separator="_").alias("gameVersion_winningTeam")
+    )
 
     dict_of_match_id_splits = train_test_split(
         groups=df_match_ids_with_game_version["matchId"].to_numpy(),
-        stratify_labels=df_match_ids_with_game_version["gameVersion"].to_numpy()
+        stratify_labels=df_match_ids_with_game_version["gameVersion_winningTeam"].to_numpy()
     )
 
     # Import the appropriate work function based on the dataset
