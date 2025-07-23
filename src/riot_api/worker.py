@@ -29,7 +29,7 @@ async def raw(
                 puuid=puuid,
                 queue=420,
                 type='ranked',
-                count=100  #50
+                count=50
             )
             storage_raw.store_file(
                 'player_match_ids',

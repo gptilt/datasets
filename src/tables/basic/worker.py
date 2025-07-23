@@ -27,7 +27,7 @@ def process_match(
         print(f"[{region}] Match {match_id} is not ranked.")
         return
     if info["info"]["participants"][0]["gameEndedInEarlySurrender"] == True:
-        print(f"[{region}] Match {match_id} ended in early surrender.")
+        print(f"[{region}] Match {match_id} ended in remake.")
         return
     timeline = storage_raw.read_files('match_timeline', record=match_id, region=region)
 

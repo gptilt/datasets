@@ -123,7 +123,7 @@ def snapshot_from_events(
         .select([
             'matchId',
             'gameStartTimestamp',
-            'gameVersion',
+            'patch',
             'timestamp',
             'platformId',
             'winningTeam',

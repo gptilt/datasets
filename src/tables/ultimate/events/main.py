@@ -67,7 +67,7 @@ def main(
         matchId=list_of_match_ids
     ).select([
         "gameStartTimestamp",
-        "gameVersion",
+        "patch",
         "matchId",
         "platformId"
     ])
@@ -77,7 +77,11 @@ def main(
         how="inner"
     )
 
-    print(f"[{region}] Storing batch...")
-    storage_ultimate.store_batch("events", df_events_with_matches)
+    # Create event type embeddings,
+    # that map event types to a semantically-meaningful embedding space.
+    df_events_with_event_type_embeddings = transform.enrich_events_with_event_type_embeddings(
+        df_events_with_matches
+    )
 
-    return df_events_with_levels
+    print(f"[{region}] Storing batch...")
+    storage_ultimate.store_batch("events", df_events_with_event_type_embeddings)
