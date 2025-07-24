@@ -13,7 +13,7 @@ PARTICIPANTS = {
     'championId': pl.Int32,
     'championName': pl.String,
     'championTransform': pl.Int16,
-    'individualPosition': pl.Int16,
+    'individualPosition': pl.String,
     'lane': pl.String,
     'pickTurn': pl.Int16,
     'role': pl.String,
@@ -29,7 +29,7 @@ PARTICIPANTS = {
     'summoner1Id': pl.Int16,
     'summoner2Id': pl.Int16,
     'teamId': pl.Int16,
-    'teamPosition': pl.Int16,
+    'teamPosition': pl.String,
     # Pings
     'allInPings': pl.Int32,
     'assistMePings': pl.Int32,
