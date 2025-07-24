@@ -119,6 +119,7 @@ def match_into_match_and_participants(
         # Shards
         for shard_category, shard_id in participant['perks']['statPerks'].items():
             participant[f'rune_shard_{shard_category}'] = shard_id
+        participant.pop('perks')
 
         # Remove unnecessary data
         for key in [

@@ -60,7 +60,7 @@ def main(
         'basic',
         dataset,
         tables=['matches', 'participants', 'events'],
-        table_schema={"matches": schema.MATCHES, "events": schema.EVENTS},
+        table_schema={"matches": schema.MATCHES, "events": schema.EVENTS, "participants": schema.PARTICIPANTS},
         partition_col="region",
         partition_val=region,
     )
