@@ -1,0 +1,11 @@
+locations:
+  - location_name: datasets
+    code_source:
+      package_name: gptilt-datasets
+    # build:
+      # registry:
+telemetry:
+  enabled: false
+concurrency:
+  runs:
+    max_concurrent_runs: 10  # Recommended when running dlt pipelines with partitions

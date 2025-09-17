@@ -155,7 +155,27 @@ class StoragePartition(Storage):
         df = df.select(sorted(df.columns))
 
         if table_name in self.buffer:
-            self.buffer[table_name] = df = pl.concat([df, self.buffer.get(table_name)])
+            try:
+                self.buffer[table_name] = df = pl.concat([df, self.buffer.get(table_name)])
+            except pl.exceptions.ShapeError:
+                # Remove problematic records
+                print(self.buffer[table_name].columns)
+                print(df.columns)
+                # Traceback (most recent call last):                                                                                                                | 3441/60001 [31:47<8:42:08,  1.81it/s]
+                #   File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+                #     self.run()
+                #   File "/usr/lib/python3.12/threading.py", line 1010, in run
+                #     self._target(*self._args, **self._kwargs)
+                #   File "/home/fabs/Documents/gptilt/datasets/src/tables/basic/worker.py", line 95, in main
+                #     storage_basic.store_batch('participants', participants)
+                #   File "/home/fabs/Documents/gptilt/datasets/src/storage/storage_partition.py", line 158, in store_batch
+                #     self.buffer[table_name] = df = pl.concat([df, self.buffer.get(table_name)])
+                #                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                #   File "/home/fabs/Documents/gptilt/datasets/venv/lib/python3.12/site-packages/polars/functions/eager.py", line 231, in concat
+                #     out = wrap_df(plr.concat_df(elems))
+                #                   ^^^^^^^^^^^^^^^^^^^^
+                # polars.exceptions.ShapeError: unable to append to a DataFrame of width 134 with a DataFrame of width 135
+                raise
         else:
             self.buffer[table_name] = df
 

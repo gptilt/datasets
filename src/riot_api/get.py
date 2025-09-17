@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 from common import print
-import os
+import dagster as dg
 
 
 BASE_URL_REGION = lambda region: f"https://{region}.api.riotgames.com"
@@ -9,6 +9,9 @@ BASE_URL_PLATFORM = lambda platform: f"https://{platform}.api.riotgames.com"
 ENDPOINTS = {
     'players': lambda platform:
         f"{BASE_URL_PLATFORM(platform)}/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5",
+
+    'league_entries': lambda platform, tier, division, page:
+        f"{BASE_URL_PLATFORM(platform)}/lol/league/v4/entries/RANKED_SOLO_5x5/{tier}/{division}?page={page}",
 
     'player_match_ids': lambda region, puuid, queue, type, count:
         f"{BASE_URL_REGION(region)}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&queue={queue}&type={type}&count={count}",
@@ -19,6 +22,7 @@ ENDPOINTS = {
     'match_timeline': lambda region, match_id:
         f"{BASE_URL_REGION(region)}/lol/match/v5/matches/{match_id}/timeline",
 }
+RIOT_API_KEY = dg.EnvVar('RIOT_API_KEY').get_value()
 
 
 async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = None, **kwargs) -> dict:
@@ -26,7 +30,7 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
     Fetches data from the Riot API.
     Waits for rate limit if exceeded.
     """
-    assert os.environ.get("RIOT_API_KEY"), "RIOT_API_KEY environment variable is not set"
+    assert RIOT_API_KEY, "RIOT_API_KEY environment variable is not set"
 
     flag_cleanup = False
     if session is None:
@@ -35,8 +39,8 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
 
     try:
         url = ENDPOINTS[endpoint](**kwargs)
-        for attempt in range(6):
-            async with session.get(url, headers={"X-Riot-Token": os.getenv("RIOT_API_KEY")}) as response:
+        for _attempt in range(6):
+            async with session.get(url, headers={"X-Riot-Token": RIOT_API_KEY}) as response:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", 30))
                     print(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")

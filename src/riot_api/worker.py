@@ -1,11 +1,10 @@
-import aiohttp
 from common import print, tqdm_range
+from datetime import datetime as dt
 import random
-from riot_api import get, transform
 import storage
 
 
-async def raw(
+async def match(
     region: str,
     regions_and_platforms: dict[str, set[str]],
     root: str,
@@ -22,15 +21,6 @@ async def raw(
         try:
             list_of_match_ids = storage_raw.read_files('player_match_ids', record=puuid, region=region)
         except FileNotFoundError:
-            list_of_match_ids = await get.fetch_with_rate_limit(
-                'player_match_ids',
-                session=session,
-                region=region,
-                puuid=puuid,
-                queue=420,
-                type='ranked',
-                count=50
-            )
             storage_raw.store_file(
                 'player_match_ids',
                 puuid,
@@ -58,7 +48,7 @@ async def raw(
         timeline = await get.fetch_with_rate_limit(
             'match_timeline', session=session, region=region, match_id=match_id
         )
-                
+        
         storage_raw.store_file(
             'match_info',
             match_id,
@@ -74,7 +64,6 @@ async def raw(
             yearmonth=transform.yearmonth_from_match(info)
         )
 
-    async with aiohttp.ClientSession() as session:
         list_of_players = []
 
         # Retrieve player uuids
@@ -86,5 +75,56 @@ async def raw(
         print(f"[{region}] Found {len(list_of_players)} player uuids.")
 
         random.shuffle(list_of_players)
-        for i in tqdm_range(list_of_players, desc=region):
+        for i in tqdm_range(len(list_of_players), desc=region):
             await process_puuid(list_of_players[i]["puuid"], session)
+
+
+
+async def mastery(
+    region: str,
+    regions_and_platforms: dict[str, set[str]],
+    root: str,
+):
+    storage_raw = storage.Storage(
+        root,
+        'raw',
+        'riot_api',
+        ['player_match_ids', 'match_info', 'match_timeline', 'player_champion_mastery']
+    )
+    print(f"[{region}] Region worker spawned.")
+    
+    list_of_players = [
+        p.stem  # find_files() returns a list of PosixPath's
+        for p in storage_raw.find_files(
+            'player_match_ids',
+            '*',
+            count=-1,
+            region=region
+        )
+    ]
+    print(f"[{region}] Found {len(list_of_players)} player uuids.")
+    print(list_of_players)
+
+    async def process_puuid(puuid, session):
+        print(f"[{region}] Processing player {puuid}...")
+
+        print(f"[{region}] Fetching champion mastery for {puuid}...")
+        platform = await get.fetch_with_rate_limit(
+            'player_region', session=session, region=region, puuid=puuid
+        )
+        mastery = await get.fetch_with_rate_limit(
+            'player_champion_mastery', session=session, platform=platform['region'], puuid=puuid
+        )
+        
+        storage_raw.store_file(
+            'player_champion_mastery',
+            puuid,
+            mastery,
+            region=region,
+            yearmonthday=dt.now().strftime('%Y%m%d')
+        )
+    
+    async with aiohttp.ClientSession() as session:
+        random.shuffle(list_of_players)
+        for i in tqdm_range(len(list_of_players), desc=region):
+            await process_puuid(list_of_players[i], session)

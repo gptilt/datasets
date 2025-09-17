@@ -3,12 +3,13 @@ from tqdm import tqdm
 print = lambda x: tqdm.write(str(x))
 
 def tqdm_range(
-    iterable,
+    stop,
     desc: str = "",
     category_width: int = 12,
-    step: int = 1
+    start: int = 0,
+    step: int = 1,
 ):
-    return tqdm(range(0, len(iterable), step), desc=f"[{desc}]".ljust(category_width))
+    return tqdm(range(start, stop, step), desc=f"[{desc}]".ljust(category_width))
 
 
 def work_generator(
@@ -33,7 +34,7 @@ def work_generator(
         data (any): For each work piece.
     """
     real_count = 0
-    for i in tqdm_range(list_of_work_pieces, desc=descriptor, step=step):
+    for i in tqdm_range(len(list_of_work_pieces), desc=descriptor, step=step):
         if real_count == max_count:
             continue
         data = work_function(

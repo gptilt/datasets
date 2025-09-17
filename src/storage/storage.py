@@ -16,11 +16,11 @@ class Storage:
         self.dataset = dataset
         self.root_path = Path(root, schema, dataset)
         self.tables = tables
+        for table in tables:
+            assert len(table) > 0, "Table names should not be empty strings."
         self.file_extension = file_extension
 
-        for table in tables:
-            Path.mkdir(self.table_path(table), parents=True, exist_ok=True)
-    
+
     def total_size_in_gb(self) -> float:
         return sum(
             f.stat().st_size
@@ -107,8 +107,9 @@ class Storage:
         **partition_columns: dict[str, str] | None
     ):
         partition = self._partition_path(table_name, **partition_columns)
-        with open(Path(partition, f"{record}.{self.file_extension}"), 'w') as f:
-            if self.file_extension == 'json':
-                json.dump(contents, f)
-            else:
-                raise NotImplementedError(f"Unsupported file extension: {self.file_extension}")
+        filename = f"{partition}/{record}.{self.file_extension}"
+        
+        if self.file_extension == 'json':
+            self.write(filename, contents)
+        else:
+            raise NotImplementedError(f"Unsupported file extension: {self.file_extension}")
