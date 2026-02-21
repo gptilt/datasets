@@ -1,21 +1,27 @@
+from pydantic import PrivateAttr
 from pyiceberg.catalog.rest import RestCatalog
-from .storage import Storage
+from .storage import Storage, NonEmptyStr
 
 
 class StorageIceberg(Storage):
-    def __init__(
-        self, root, schema, dataset, tables,
-        warehouse_name: str,
-        catalog_uri: str,
-        token: str
-    ):
-        super().__init__(root, schema, dataset, tables)
-        
-        self.catalog = RestCatalog(
-            name=root,
-            warehouse_name=warehouse_name,
-            catalog_uri=catalog_uri,
-            token=token
-        )
+    warehouse_name: NonEmptyStr
+    catalog_uri: NonEmptyStr
+    token: NonEmptyStr
+    
+    # Declare a private attribute that Pydantic/Dagster ignores during serialization
+    _catalog: object = PrivateAttr(default=None)
 
-        self.catalog.create_namespace_if_not_exists(dataset)
+    @property
+    def catalog(self):
+
+        if self._catalog is None:
+            self._catalog = RestCatalog(
+                name=???,
+                warehouse_name=self.warehouse_name,
+                catalog_uri=self.catalog_uri,
+                token=self.token
+            )
+
+        self.catalog.create_namespace_if_not_exists(self.dataset)
+
+        return self._catalog

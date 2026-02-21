@@ -24,9 +24,11 @@ dependencies = [
     "matplotlib>=3.10.1",
     "polars>=1.30.0",
     "pyarrow>=19.0.1",
+    "pyiceberg>=0.11.0",
     "requests>=2.31.0",
     "sentence-transformers>=5.0.0",
     "tqdm>=4.65.0",
+    "yt-dlp>=2026.2.4"
 ]
 
 [project.optional-dependencies]

@@ -1,39 +1,47 @@
 import boto3
+from botocore.config import Config
 import json
-from .storage import Storage
+from pydantic import PrivateAttr
+from .storage import Storage, NonEmptyStr
 
 
 class StorageS3(Storage):
-    def __init__(
-        self,
-        root,
-        schema,
-        dataset,
-        tables,
-        bucket_name: str,
-        bucket_url: str,
-        bucket_access_key: str,
-        bucket_secret_key: str,
-        file_extension = 'json',
-    ):
-        super().__init__(root, schema, dataset, tables, file_extension)
-        
-        self.bucket_name = bucket_name
-        self.s3_client = boto3.client(
-            "s3",
-            endpoint_url=bucket_url,
-            aws_access_key_id=bucket_access_key,
-            aws_secret_access_key=bucket_secret_key,
-        )
-        
+    bucket_endpoint: NonEmptyStr
+    bucket_name: NonEmptyStr
+    access_key_id: NonEmptyStr
+    secret_access_key: NonEmptyStr
 
-    def write(self, filename: str, contents: any):
-        # Convert data -> JSON string -> bytes
-        json_bytes = json.dumps(contents).encode("utf-8")
+    # Declare a private attribute that Pydantic/Dagster ignores during serialization
+    _client: object = PrivateAttr(default=None)
 
-        self.s3_client.put_object(
+    @property
+    def client(self):
+        """
+        Lazy-loads the client.
+        If it exists in memory, return it.
+        If not, create it.
+        """
+        if self._client is None:
+            self._client = boto3.client(
+                's3',
+                endpoint_url=self.bucket_endpoint,
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+                config=Config(signature_version='s3v4')
+            )
+        return self._client
+
+    def upload_json(self, data: dict, object_name: str):
+        """Uploads a JSON object to R2"""
+        self.client.put_object(
             Bucket=self.bucket_name,
-            Key=filename,  # path/key inside the bucket
-            Body=json_bytes,
-            ContentType="application/json"  # optional, helps when downloading
+            Key=object_name,
+            Body=json.dumps(data).encode("utf-8"),
+            ContentType='application/json'
         )
+
+    def upload_file(self, file_path: str, object_name: str):
+        """Uploads a file to R2"""
+        self.client.upload_file(file_path, self.bucket_name, object_name)
+
+        return f"r2://{self.bucket_name}/{object_name}"

@@ -5,7 +5,7 @@ import os
 import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
-from storage import Storage
+from .storage import StorageLocal, NonEmptyString
 
 
 def to_polars(batch, schema: pl.Schema | None = None):
@@ -17,27 +17,19 @@ def to_polars(batch, schema: pl.Schema | None = None):
         raise ValueError(f"Unsupported batch type {type(batch)}.")
 
 
-class StoragePartition(Storage):
-    def __init__(
-        self,
-        root: str,
-        schema: str,
-        dataset: str,
-        tables: list[str],
-        partition_col: str = None,
-        partition_val: str = None,
-        split: str = 'train',
-        table_schema: dict[str, pa.Schema] = {},
-    ):
-        super().__init__(root, schema, dataset, tables, file_extension='parquet')
+class StoragePartition(StorageLocal):
+    file_extension: NonEmptyString = 'parquet'
 
-        self.target_batch_size = 2_000_000_000  # 2 GB
-        self.partition_col, self.partition_val = partition_col, partition_val
-        self.split = split
-        
-        self.table_schema = table_schema
-        self.buffer = {}
-        self.shard_id = { table_name: 0 for table_name in tables}
+    target_batch_size: int = 2_000_000_000  # 2 GB
+    partition_col: str | None = None
+    partition_val: str | None = None
+    split: NonEmptyString = 'train'
+
+    table_schema: dict[str, pa.Schema] = {}
+    buffer: dict[str, list[dict]] = {}
+
+    def shard_id(self):
+        return { table_name: 0 for table_name in self.tables}
 
 
     def split_name(self) -> str:
@@ -117,8 +109,8 @@ class StoragePartition(Storage):
             split=self.split_name(),
             info=datasets.DatasetInfo()
         )
-        ds.to_parquet(f"{self.table_path(table_name)}/{self.split_name()}-{self.shard_id[table_name]:05d}.parquet")
-        self.shard_id[table_name] += 1
+        ds.to_parquet(f"{self.table_path(table_name)}/{self.split_name()}-{self.shard_id()[table_name]:05d}.parquet")
+        self.shard_id()[table_name] += 1
 
         return df.estimated_size()
     

@@ -24,10 +24,6 @@ def new_storage(schema: str, kind: str):
                 schema='raw',
                 dataset='riot_api',
                 tables=['league_entries'],
-                bucket_name=dg.EnvVar("S3_BUCKET_NAME").get_value(),
-                bucket_url=dg.EnvVar("S3_BUCKET_URL").get_value(),
-                bucket_access_key=dg.EnvVar("S3_BUCKET_ACCESS_KEY").get_value(),
-                bucket_secret_key=dg.EnvVar("S3_BUCKET_SECRET_KEY").get_value(),
             )
         case _:
             raise NotImplementedError(f"Invalid schema: {schema}")

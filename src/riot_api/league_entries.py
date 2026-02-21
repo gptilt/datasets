@@ -2,8 +2,8 @@ from common import tqdm_range
 from constants import SERVERS, TIERS, DIVISIONS
 import dagster as dg
 import itertools
+import storage
 from riot_api import get
-from .main import new_storage
 import time
 
 
@@ -28,7 +28,7 @@ partition_per_day_per_server_x_tier_x_division = dg.MultiPartitionsDefinition({
     partitions_def=partition_per_day_per_server_x_tier_x_division,
 )
 async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division(
-    context: dg.AssetExecutionContext
+    context: dg.AssetExecutionContext, riot_api_bucket: storage.StorageS3
 ):
     """
     A partitioned asset that fetches ranked league entries from the Riot API.
@@ -39,7 +39,8 @@ async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
     date = partition_keys["day"]
     server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
- 
+    context.log.info(f"Fetching league entries for {date} - {server} - {tier} - {division}")
+
     list_of_league_entries = []
 
     for page in tqdm_range(500, start=1):
@@ -53,6 +54,7 @@ async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division
 
         # Pages after the maximum return an empty list.
         if len(response) == 0:
+            context.log.info("No more pages to fetch")
             break
 
         # Add a timestamp to each entry
@@ -62,26 +64,24 @@ async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division
         ])
     
     # Save raw file to S3 storage
-    new_storage('raw').store_file(
-        "league_entries",
-        f"{tier}_{division}",
+    riot_api_bucket.upload_json(
         list_of_league_entries,
-        date=date,
-        server=server,
+        f"league_entries/{server}/{tier}_{division}/{date}/",
     )
     
     yield dg.MaterializeResult()
 
 
-
 @dg.asset(
-    deps=asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division,
-    name="raw_riot_api_league_entries",
+    deps=[asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division],
+    name="clean_riot_api_league_entries",
     group_name="riot_api",
     partitions_def=partition_per_day_per_server_x_tier_x_division,
 )
 async def asset_clean_riot_api_league_entries_per_day_per_server_x_tier_x_division(
-    context: dg.AssetExecutionContext
+    context: dg.AssetExecutionContext,
+    riot_api_bucket: storage.StorageS3,
+    catalog_clean: storage.StorageIceberg
 ):
     """
     Takes the respective partition from raw and writes to a table.
@@ -93,13 +93,10 @@ async def asset_clean_riot_api_league_entries_per_day_per_server_x_tier_x_divisi
     date = partition_keys["day"]
     server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
  
-    list_of_league_entries = []
-    
     # Read raw file from S3 storage
-    storage_raw = new_storage('raw', 's3')
-    league_entries = storage_raw.read_files("league_entries", f"{tier}_{division}", date=date, server=server)
-    storage_clean = new_storage('clean', 'iceberg')
-    storage_clean.save_records_to_table()
+    league_entries = riot_api_bucket.read_files("league_entries", f"{tier}_{division}", date=date, server=server)
+    
+    catalog_clean.save_records_to_table()
     
     yield dg.MaterializeResult()
 
