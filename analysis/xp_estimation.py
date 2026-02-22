@@ -7,7 +7,7 @@ import seaborn as sns
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import root_mean_squared_error
 from sklearn.model_selection import train_test_split
-from storage import StoragePartition
+from ds_storage import StoragePartition
 import huggingface_hub as hub
 import datasets
 
