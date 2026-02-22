@@ -5,7 +5,8 @@ import os
 import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
-from .storage import StorageLocal, NonEmptyString
+from .storage_base import NonEmptyString
+from .storage_local import StorageLocal
 
 
 def to_polars(batch, schema: pl.Schema | None = None):

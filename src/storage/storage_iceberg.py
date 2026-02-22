@@ -1,6 +1,6 @@
 from pydantic import PrivateAttr
 from pyiceberg.catalog.rest import RestCatalog
-from .storage import Storage, NonEmptyStr
+from .storage_base import Storage, NonEmptyStr
 
 
 class StorageIceberg(Storage):
@@ -16,12 +16,12 @@ class StorageIceberg(Storage):
 
         if self._catalog is None:
             self._catalog = RestCatalog(
-                name=???,
+                name=self.root,
                 warehouse_name=self.warehouse_name,
                 catalog_uri=self.catalog_uri,
                 token=self.token
             )
 
-        self.catalog.create_namespace_if_not_exists(self.dataset)
+        self.catalog.create_namespace_if_not_exists(f"{self.dataset}.{self.schema_name}")
 
         return self._catalog

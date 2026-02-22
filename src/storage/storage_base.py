@@ -13,13 +13,13 @@ class TableNotFoundError(FileNotFoundError):
 
 class Storage(dg.ConfigurableResource):
     root: NonEmptyStr
-    schema_name: NonEmptyStr
     dataset: NonEmptyStr
+    schema_name: NonEmptyStr
     tables: list[NonEmptyStr]
 
 
     def root_path(self) -> Path:
-        return Path(self.root, self.schema_name, self.dataset)
+        return Path(self.root, self.dataset, self.schema_name)
     
     def table_path(self, table_name: str) -> Path:
         if table_name not in self.tables:

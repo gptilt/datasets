@@ -2,7 +2,7 @@ import boto3
 from botocore.config import Config
 import json
 from pydantic import PrivateAttr
-from .storage import Storage, NonEmptyStr
+from .storage_base import Storage, NonEmptyStr
 
 
 class StorageS3(Storage):

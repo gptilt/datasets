@@ -1,7 +1,7 @@
 import dagster as dg
 from dagster_cloud.metadata.source_code import link_code_references_to_git_if_cloud
-from src import riot_api
-from src import storage
+import riot_api
+import storage
 
 
 defs = dg.Definitions(
@@ -18,9 +18,9 @@ defs = dg.Definitions(
     ],
     resources={
         "youtube_bucket": storage.StorageS3(
-            root='gptilt',
-            schema_name='raw',
+            root=dg.EnvVar("ENV"),
             dataset='riot_api',
+            schema_name='raw',
             tables=['league_entries'],
             bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
             bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
@@ -28,9 +28,9 @@ defs = dg.Definitions(
             secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_KEY"),
         ),
         "riot_api_bucket": storage.StorageS3(
-            root='gptilt',
-            schema_name='raw',
+            root=dg.EnvVar("ENV"),
             dataset='youtube',
+            schema_name='raw',
             tables=['audio'],
             bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
             bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
@@ -38,14 +38,13 @@ defs = dg.Definitions(
             secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_KEY"),
         ),
         "catalog_clean": storage.StorageIceberg(
-            root='gptilt',
-            schema_name='raw',
-            dataset='youtube',
-            tables=['audio'],
-            endpoint=dg.EnvVar("CATALOG_CLEAN_ENDPOINT"),
-            access_key=dg.EnvVar("CATALOG_CLEAN_ACCESS_KEY"),
-            secret_key=dg.EnvVar("CATALOG_CLEAN_SECRET_KEY"),
-            catalog_name=dg.EnvVar("CATALOG_CLEAN_NAME")
+            root=dg.EnvVar("ENV"),
+            dataset='riot_api',
+            schema_name='clean',
+            tables=['league_entries'],
+            warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
+            catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
+            token=dg.EnvVar("CATALOG_SECRET_KEY"),
         )
     },
 )

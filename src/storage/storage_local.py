@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from .storage import Storage
+from .storage_base import Storage
 
 
 class StorageLocal(Storage):
