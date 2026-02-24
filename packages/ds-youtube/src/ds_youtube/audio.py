@@ -65,8 +65,8 @@ def asset_raw_youtube_audio(
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             context.log.info(f"Processing: {url} from {start_date_str} to {end_date_str}")
 
-            # Extract Info (Metadata) & Download
-            info = ydl.extract_info(url, download=True)
+            # Extract Info (Metadata)
+            info = ydl.extract_info(url, download=False)
             entries = info['entries']
 
             # Iterate through downloaded videos and Upload to bucket
@@ -83,6 +83,9 @@ def asset_raw_youtube_audio(
                 object_name = f"{video_id}.{AUDIO_EXTENSION}"
                 local_path = os.path.join(temp_dir, object_name)
 
+                # We pass the already-extracted dictionary to avoid re-fetching metadata
+                ydl.process_ie_result(entry, download=True)
+
                 # Sanity check in case the download failed but didn't throw an error
                 if not os.path.exists(local_path):
                     context.log.warning(f"File not found for {title}, skipping: {local_path}")
@@ -96,6 +99,10 @@ def asset_raw_youtube_audio(
                     object_name,
                     channel_id=channel_id
                 )
+
+                # Clean up local file to save space
+                os.remove(local_path)
+                context.log.info(f"Cleaned up local file for {title}")
 
                 # Collect Result Data
                 results.append({
