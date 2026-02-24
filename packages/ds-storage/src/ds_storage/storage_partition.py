@@ -6,7 +6,7 @@ import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
 from .storage_base import NonEmptyStr
-from .storage_local import StorageLocal
+from .storage_file import StorageFile
 
 
 def to_polars(batch, schema: pl.Schema | None = None):
@@ -18,7 +18,7 @@ def to_polars(batch, schema: pl.Schema | None = None):
         raise ValueError(f"Unsupported batch type {type(batch)}.")
 
 
-class StoragePartition(StorageLocal):
+class StoragePartition(StorageFile):
     file_extension: NonEmptyStr = 'parquet'
 
     target_batch_size: int = 2_000_000_000  # 2 GB

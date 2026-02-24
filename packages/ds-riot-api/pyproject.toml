@@ -5,7 +5,7 @@ dependencies = [
     "aiohttp>=3.8.1",
     "dorans>=0.2.5",
     "requests",
-    "storage",
+    "ds_storage",
 ]
 
 [build-system]

@@ -1,6 +1,6 @@
 from ds_common import tqdm_range
 from .get import *
-from .constants import SERVERS, TIERS, DIVISIONS
+from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS
 import dagster as dg
 import itertools
 from ds_storage import StorageS3, StorageIceberg
@@ -24,7 +24,7 @@ partition_per_day_per_server_x_tier_x_division = dg.MultiPartitionsDefinition({
 
 @dg.asset(
     name="raw_riot_api_league_entries",
-    group_name="riot_api",
+    group_name=DATASET_NAME,
     partitions_def=partition_per_day_per_server_x_tier_x_division,
 )
 async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division(
@@ -66,7 +66,11 @@ async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division
     # Save raw file to S3 storage
     riot_api_bucket.upload_json(
         list_of_league_entries,
-        f"league_entries/{server}/{tier}_{division}/{date}/",
+        table_name="league_entries",
+        object_name=date,
+        server=server,
+        tier=tier,
+        division=division,
     )
     
     yield dg.MaterializeResult()
@@ -75,7 +79,7 @@ async def asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division
 @dg.asset(
     deps=[asset_raw_riot_api_league_entries_per_day_per_server_x_tier_x_division],
     name="clean_riot_api_league_entries",
-    group_name="riot_api",
+    group_name=DATASET_NAME,
     partitions_def=partition_per_day_per_server_x_tier_x_division,
 )
 async def asset_clean_riot_api_league_entries_per_day_per_server_x_tier_x_division(

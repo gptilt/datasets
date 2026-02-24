@@ -1,6 +1,7 @@
 import dagster as dg
 from .get import *
 from .constants import REGION_PER_SERVER, SERVERS
+from ds_storage import StorageS3
 
 
 # Define partitions
@@ -22,7 +23,8 @@ partition_per_day_per_server = dg.MultiPartitionsDefinition({
     partitions_def=partition_per_day_per_server,
 )
 async def asset_riot_api_player_matches_per_day_per_server(
-    context: dg.AssetExecutionContext
+    context: dg.AssetExecutionContext,
+    riot_api_bucket: StorageS3
 ):
     """
     A partitioned asset that selects player IDs and fetches corresponding match IDs.
@@ -33,8 +35,6 @@ async def asset_riot_api_player_matches_per_day_per_server(
     date = partition_keys["day"]
     server = partition_keys["server"]
     context.log.info(f"Fetching data for {date} on {server}")
-
-    storage_raw = new_storage('raw')
 
     list_of_match_ids = await fetch_with_rate_limit(
         'player_match_ids',

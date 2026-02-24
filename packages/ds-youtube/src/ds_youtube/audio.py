@@ -1,92 +1,114 @@
+from .constants import AUDIO_EXTENSION, DATASET_NAME, CHANNEL_IDS
+import dagster as dg
+from ds_storage import StorageS3
 import os
-import shutil
+import tempfile
 import yt_dlp
-from dagster import asset, Config, MaterializeResult, MetadataValue
-from resources import cloudflare
+from yt_dlp.utils import DateRange
 
 
-class YouTubeIngestConfig(Config):
-    video_urls: list[str]
-    keep_local: bool = False  # Set to True for debugging
+# Define partitions
+partition_per_channel = dg.StaticPartitionsDefinition(list(CHANNEL_IDS['audio'].keys()))
+partition_per_week = dg.WeeklyPartitionsDefinition(start_date="2024-01-01")
+partition_per_channel_per_week = dg.MultiPartitionsDefinition({
+    "channel": partition_per_channel,
+    "time": partition_per_week,
+})
 
 
-@asset
+@dg.asset(
+    name="raw_youtube_audio",
+    group_name=DATASET_NAME,
+    partitions_def=partition_per_channel_per_week,
+)
 def asset_raw_youtube_audio(
-    context,
-    config: YouTubeIngestConfig,
-    youtube_bucket: cloudflare.R2Bucket
+    context: dg.AssetExecutionContext,
+    youtube_bucket: StorageS3
 ):
     """
-    Downloads audio from YouTube and uploads to Cloudflare R2.
+    Downloads audio from YouTube and uploads to an S3 storage.
     Returns metadata about the processed videos.
     """
-    
+    # Extract Partition Keys
+    # Multi-partitions require extracting the specific dimensions
+    partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
+    channel_name = partition_keys["channel"]
+    channel_id = CHANNEL_IDS['audio'].get(channel_name)
+
+    # Extract Time Window and format for yt-dlp (YYYYMMDD)
+    time_window = context.partition_time_window
+    start_date_str = time_window.start.strftime('%Y%m%d')
+    end_date_str = time_window.end.strftime('%Y%m%d')
+
+    url = f"https://www.youtube.com/channel/{channel_id}/videos"
+
     # Create a temporary directory for downloads
-    temp_dir = "temp_downloads"
-    os.makedirs(temp_dir, exist_ok=True)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        results = []
 
-    results = []
+        # yt-dlp options for Audio Only
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': AUDIO_EXTENSION,
+                'preferredquality': '192',
+            }],
+            # Filename = VideoID.m4a
+            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+            # Date Range for yt-dlp
+            'daterange': DateRange(start_date_str, end_date_str)
+        }
 
-    # yt-dlp options for Audio Only
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'm4a', # m4a for Whisper
-            'preferredquality': '192',
-        }],
-        'outtmpl': f'{temp_dir}/%(id)s.%(ext)s', # Filename = VideoID.m4a
-        'quiet': True,
-        'no_warnings': True,
-    }
-
-    try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            for url in config.video_urls:
-                context.log.info(f"Processing: {url}")
-                
-                # A. Extract Info (Metadata)
-                info = ydl.extract_info(url, download=False)
-                video_id = info['id']
-                title = info['title']
-                uploader = info['uploader']
-                duration = info['duration']
-                
-                # Define expected filename
-                filename = f"{video_id}.m4a"
-                local_path = os.path.join(temp_dir, filename)
-                
-                # B. Download
-                context.log.info(f"Downloading {title}...")
-                ydl.download([url])
+            context.log.info(f"Processing: {url} from {start_date_str} to {end_date_str}")
 
-                # C. Upload to R2
-                context.log.info(f"Uploading to R2...")
-                r2_path = f"raw_audio/{uploader}/{filename}" # Structured path in bucket
-                youtube_bucket.upload_file(local_path, r2_path)
+            # Extract Info (Metadata) & Download
+            info = ydl.extract_info(url, download=True)
+            entries = info['entries']
+
+            # Iterate through downloaded videos and Upload to bucket
+            for entry in entries:
+                if not entry:
+                    # yt-dlp sometimes yields None for hidden/deleted videos
+                    continue
                 
-                # D. Collect Result Data
+                video_id = entry.get('id')
+                title = entry.get('title')
+                upload_date = entry.get('upload_date')
+
+                # Define expected filename
+                object_name = f"{video_id}.{AUDIO_EXTENSION}"
+                local_path = os.path.join(temp_dir, object_name)
+
+                # Sanity check in case the download failed but didn't throw an error
+                if not os.path.exists(local_path):
+                    context.log.warning(f"File not found for {title}, skipping: {local_path}")
+                    continue
+
+                # Upload to bucket
+                context.log.info(f"Uploading {title} (upload_date={upload_date}) to S3...")
+                youtube_bucket.upload_file(
+                    local_path,
+                    "audio",
+                    object_name,
+                    channel_id=channel_id
+                )
+
+                # Collect Result Data
                 results.append({
                     "title": title,
                     "id": video_id,
-                    "r2_path": r2_path,
-                    "duration": duration
+                    "upload_date": upload_date,
                 })
-                
-                context.log.info(f"Successfully uploaded {r2_path}")
-
-    finally:
-        # E. Cleanup Local Files
-        if not config.keep_local:
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-                context.log.info("Cleaned up temporary files.")
 
     # Return result with rich metadata for the Dagster UI
-    return MaterializeResult(
+    return dg.MaterializeResult(
         metadata={
             "processed_count": len(results),
-            "videos": MetadataValue.json(results),
+            "videos": dg.MetadataValue.json(results),
             "latest_video": results[-1]["title"] if results else "None"
         }
     )

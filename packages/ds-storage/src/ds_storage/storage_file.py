@@ -3,7 +3,7 @@ from pathlib import Path
 from .storage_base import Storage
 
 
-class StorageLocal(Storage):
+class StorageFile(Storage):
     file_extension: str = 'json'
 
     def init_tables(self):
@@ -16,6 +16,16 @@ class StorageLocal(Storage):
             for f in self.root_path().rglob('*') if f.is_file()
         ) / (1024 ** 3)  # GB
 
+    def get_partition(
+        self,
+        table_name: str,
+        **partition_columns: dict[str, str] | None
+    ):
+        partition = self.partition_path(table_name, **partition_columns)
+        Path.mkdir(partition, parents=True, exist_ok=True)
+
+        return partition
+
     def find_files(
         self,
         table_name: str,
@@ -23,7 +33,7 @@ class StorageLocal(Storage):
         count: int = 1,
         **partition_columns: dict[str, str] | None
     ) -> list[Path]:
-        partition = self.partition_path(table_name, **partition_columns)
+        partition = self.get_partition(table_name, **partition_columns)
         files = list(partition.rglob(f"{record}.{self.file_extension}"))
         if not files:
             raise FileNotFoundError(f"No file {record}.{self.file_extension} found in partition.")
@@ -79,7 +89,7 @@ class StorageLocal(Storage):
         contents: any,
         **partition_columns: dict[str, str] | None
     ):
-        partition = self.partition_path(table_name, **partition_columns)
+        partition = self.get_partition(table_name, **partition_columns)
         filename = f"{partition}/{record}.{self.file_extension}"
         
         if self.file_extension == 'json':

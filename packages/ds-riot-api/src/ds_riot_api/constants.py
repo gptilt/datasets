@@ -1,3 +1,5 @@
+DATASET_NAME = 'riot_api'
+
 REGIONS_AND_PLATFORMS = {
     "americas": {
         "br1",

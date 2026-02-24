@@ -17,13 +17,15 @@ class Storage(dg.ConfigurableResource):
     schema_name: NonEmptyStr
     tables: list[NonEmptyStr]
 
+    def validate_table_name(self, table_name: str):
+        if table_name not in self.tables:
+            raise TableNotFoundError(f"Table {table_name} not found in schema {self.schema_name}.")
 
     def root_path(self) -> Path:
         return Path(self.root, self.dataset, self.schema_name)
     
     def table_path(self, table_name: str) -> Path:
-        if table_name not in self.tables:
-            raise TableNotFoundError(f"Table {table_name} not found in schema {self.schema_name}.")
+        self.validate_table_name(table_name)
         return Path(self.root_path(), table_name)
 
     def partition_path(self, table_name: str, **partition_columns: dict[str, str] | None) -> Path:
@@ -34,5 +36,4 @@ class Storage(dg.ConfigurableResource):
             self.table_path(table_name),
             *[f"{k}={v}" for k, v in partition_columns.items()],
         )
-        Path(partition).mkdir(parents=True, exist_ok=True)
         return partition
