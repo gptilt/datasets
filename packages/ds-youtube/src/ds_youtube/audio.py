@@ -59,7 +59,9 @@ def asset_raw_youtube_audio(
             'quiet': True,
             'no_warnings': True,
             # Date Range for yt-dlp
-            'daterange': DateRange(start_date_str, end_date_str)
+            'daterange': DateRange(start_date_str, end_date_str),
+            # Skip private/deleted/age-restricted videos without crashing
+            'ignoreerrors': True,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
