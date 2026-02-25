@@ -60,6 +60,8 @@ def asset_raw_youtube_audio(
             'no_warnings': True,
             # Date Range for yt-dlp
             'daterange': DateRange(start_date_str, end_date_str),
+            # Stop fetching more pages once videos get too old
+            'break_on_reject': True,
             # Do not fetch individual video pages during info extraction
             # (the playlist object has all the information needed)
             'extract_flat': 'in_playlist',
@@ -85,15 +87,19 @@ def asset_raw_youtube_audio(
                 
                 video_id = entry.get('id')
                 title = entry.get('title')
-                upload_date = entry.get('upload_date')
-                context.log.info(f"Found video: {title} (id={video_id}, upload_date={upload_date})")
+                context.log.info(f"Found video: {title} (id={video_id})")
 
                 # Define expected filename
                 object_name = f"{video_id}.{AUDIO_EXTENSION}"
                 local_path = os.path.join(temp_dir, object_name)
 
                 # We pass the already-extracted dictionary to avoid re-fetching metadata
-                ydl.process_ie_result(entry, download=True)
+                try:
+                    full_info = ydl.process_ie_result(entry, download=True)
+                except yt_dlp.utils.RejectedVideoReached:
+                    break
+                # Get upload_date from the complete video information
+                upload_date = full_info.get('upload_date') if full_info else "Unknown"
 
                 # Sanity check in case the download failed but didn't throw an error
                 if not os.path.exists(local_path):
