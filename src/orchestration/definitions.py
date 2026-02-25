@@ -31,6 +31,7 @@ defs = dg.Definitions(
             dataset='youtube',
             schema_name='raw',
             tables=['audio'],
+            file_extension='m4a',
             bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
             bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
             access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
