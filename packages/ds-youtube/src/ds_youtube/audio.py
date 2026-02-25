@@ -60,8 +60,14 @@ def asset_raw_youtube_audio(
             'no_warnings': True,
             # Date Range for yt-dlp
             'daterange': DateRange(start_date_str, end_date_str),
+            # Do not fetch individual video pages during info extraction
+            # (the playlist object has all the information needed)
+            'extract_flat': 'in_playlist',
             # Skip private/deleted/age-restricted videos without crashing
             'ignoreerrors': True,
+            # Wait randomly between 2 and 5 seconds before downloading each video
+            'sleep_interval': 2,
+            'max_sleep_interval': 5,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -80,6 +86,7 @@ def asset_raw_youtube_audio(
                 video_id = entry.get('id')
                 title = entry.get('title')
                 upload_date = entry.get('upload_date')
+                context.log.info(f"Found video: {title} (id={video_id}, upload_date={upload_date})")
 
                 # Define expected filename
                 object_name = f"{video_id}.{AUDIO_EXTENSION}"
