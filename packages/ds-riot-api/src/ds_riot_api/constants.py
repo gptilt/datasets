@@ -31,4 +31,4 @@ TIERS = {
     "DIAMOND"
 }
 
-DIVISIONS = {"I", "II", "III", "IV"}
+DIVISIONS = {1, 2, 3, 4}
