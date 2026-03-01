@@ -42,7 +42,8 @@ async def asset_riot_api_player_matches_per_day_per_server(
         puuid="QjHAbswPOuBJcq1IlLni4wTR8wbctL3a7XPl7-cGWO-FJkp53zYvLZ21Y7qeV1ybCz2BbeIhVAtQ4A",
         queue=420,
         type='ranked',
-        count=100
+        count=100,
+        # filtrar por data!!!
     )
     print(list_of_match_ids)
 

@@ -13,6 +13,9 @@ ENDPOINTS = {
     'league_entries': lambda platform, tier, division, page:
         f"{BASE_URL_PLATFORM(platform)}/lol/league/v4/entries/RANKED_SOLO_5x5/{tier}/{division}?page={page}",
 
+    'player_riot_account': lambda region, puuid:
+        f"{BASE_URL_REGION(region)}/riot/account/v1/accounts/by-puuid/{puuid}",
+
     'player_match_ids': lambda region, puuid, queue, type, count:
         f"{BASE_URL_REGION(region)}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&queue={queue}&type={type}&count={count}",
 

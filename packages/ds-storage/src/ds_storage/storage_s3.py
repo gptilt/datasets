@@ -47,6 +47,24 @@ class StorageS3(StorageFile):
             f"{object_name}.{self.file_extension}"
         )
 
+    def get_object(
+        self,
+        table_name: str,
+        object_name: str,
+        **partition_columns: dict[str, str] | None
+    ) -> dict | None:
+        """
+        Gets an object from S3.
+        """
+        try:
+            response = self.client.get_object(
+                Bucket=self.bucket_name,
+                Key=str(self.object_path(table_name, object_name, **partition_columns))
+            )
+            return json.loads(response['Body'].read())
+        except self.client.exceptions.NoSuchKey:
+            return None
+
     def upload_json(
         self,
         data: dict,

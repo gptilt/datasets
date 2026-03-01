@@ -22,13 +22,12 @@ REGIONS = list(REGIONS_AND_PLATFORMS.keys())
 SERVERS = [server for servers in REGIONS_AND_PLATFORMS.values() for server in servers]
 REGION_PER_SERVER = {server: region for region, servers in REGIONS_AND_PLATFORMS.items() for server in servers}
 
-TIERS = {
+TIERS = [
     "IRON",
     "BRONZE",
     "SILVER",
     "GOLD",
     "PLATINUM",
     "DIAMOND"
-}
-
-DIVISIONS = {1, 2, 3, 4}
+]
+DIVISIONS = ["I", "II", "III", "IV"]
