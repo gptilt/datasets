@@ -8,11 +8,11 @@ defs = dg.Definitions(
         dg.load_assets_from_modules([ds_riot_api, ds_youtube])
     )),
     jobs=[
-        ds_riot_api.job_riot_api_league_entries,
+        ds_riot_api.job_riot_api_player_rank,
         ds_riot_api.job_riot_api_player_matches,
     ],
     schedules=[
-        ds_riot_api.schedule_riot_api_league_entries,
+        ds_riot_api.schedule_riot_api_player_rank,
         ds_riot_api.schedule_riot_api_player_matches
     ],
     resources={
@@ -41,7 +41,7 @@ defs = dg.Definitions(
             root=dg.EnvVar("ENV"),
             dataset='riot_api',
             schema_name='clean',
-            tables=['league_entries'],
+            tables=list(ds_riot_api.SCHEMATA.keys()),
             warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
             catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
             token=dg.EnvVar("CATALOG_TOKEN"),

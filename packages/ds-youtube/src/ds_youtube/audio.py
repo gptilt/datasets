@@ -1,4 +1,4 @@
-from .constants import AUDIO_EXTENSION, DATASET_NAME, CHANNEL_IDS
+from .constants import AUDIO_EXTENSION, DATASET_NAME, PLAYLISTS
 import dagster as dg
 from ds_storage import StorageS3
 import os
@@ -8,10 +8,10 @@ from yt_dlp.utils import DateRange
 
 
 # Define partitions
-partition_per_channel = dg.StaticPartitionsDefinition(list(CHANNEL_IDS['audio'].keys()))
+partition_per_playlist = dg.StaticPartitionsDefinition(list(PLAYLISTS['audio'].keys()))
 partition_per_week = dg.WeeklyPartitionsDefinition(start_date="2024-01-01")
-partition_per_channel_per_week = dg.MultiPartitionsDefinition({
-    "channel": partition_per_channel,
+partition_per_playlist_per_week = dg.MultiPartitionsDefinition({
+    "playlist": partition_per_playlist,
     "time": partition_per_week,
 })
 
@@ -19,7 +19,7 @@ partition_per_channel_per_week = dg.MultiPartitionsDefinition({
 @dg.asset(
     name="raw_youtube_audio",
     group_name=DATASET_NAME,
-    partitions_def=partition_per_channel_per_week,
+    partitions_def=partition_per_playlist_per_week,
 )
 def asset_raw_youtube_audio(
     context: dg.AssetExecutionContext,
@@ -32,15 +32,13 @@ def asset_raw_youtube_audio(
     # Extract Partition Keys
     # Multi-partitions require extracting the specific dimensions
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    channel_name = partition_keys["channel"]
-    channel_id = CHANNEL_IDS['audio'].get(channel_name)
+    playlist_name = partition_keys["playlist"]
+    url = f"https://www.youtube.com/{PLAYLISTS['audio'].get(playlist_name)}"
 
     # Extract Time Window and format for yt-dlp (YYYYMMDD)
     time_window = context.partition_time_window
     start_date_str = time_window.start.strftime('%Y%m%d')
     end_date_str = time_window.end.strftime('%Y%m%d')
-
-    url = f"https://www.youtube.com/channel/{channel_id}/videos"
 
     # Create a temporary directory for downloads
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -112,7 +110,7 @@ def asset_raw_youtube_audio(
                     local_path,
                     "audio",
                     object_name,
-                    channel_id=channel_id
+                    playlist=playlist_name
                 )
 
                 # Clean up local file to save space
