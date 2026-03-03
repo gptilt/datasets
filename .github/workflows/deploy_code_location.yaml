@@ -36,7 +36,10 @@ jobs:
         with:
           context: .
           build-args: |
-            IMAGE_SOURCE=https://github.com/${{ github.repository_owner }}/${{ github.repository }}
+            IMAGE_SOURCE=https://github.com/${{ github.repository }}
+            DAGSTER_CLOUD_GIT_SHA=${{ github.sha }}
+            DAGSTER_CLOUD_GIT_BRANCH=${{ github.ref_name }}
+            DAGSTER_CLOUD_GIT_URL=${{ github.server_url }}/${{ github.repository }}
           push: true
           # We tag the image with the unique Git commit hash (github.sha)
           # and the ref_name, for human readability.
