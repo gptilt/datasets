@@ -58,4 +58,6 @@ jobs:
             --location-name "${{ github.repository }}" \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --package-name ${{ env.DAGSTER_PACKAGE_NAME }} \
-            --url ${{ secrets.DAGSTER_CLOUD_URL }}
+            --url ${{ secrets.DAGSTER_CLOUD_URL }} \
+            --git-url ${{ github.server_url }}/${{ github.repository }} \
+            --commit-hash ${{ github.sha }}
