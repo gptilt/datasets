@@ -1,6 +1,10 @@
 import dagster as dg
 from dagster_cloud.metadata.source_code import link_code_references_to_git_if_cloud
 import ds_riot_api, ds_youtube, ds_storage
+import os
+
+
+DEPLOYMENT_NAME = os.getenv("DAGSTER_CLOUD_DEPLOYMENT_NAME", "local")
 
 
 defs = dg.Definitions(
@@ -17,7 +21,7 @@ defs = dg.Definitions(
     ],
     resources={
         "riot_api_bucket": ds_storage.StorageS3(
-            root=dg.EnvVar("ENV"),
+            root=DEPLOYMENT_NAME,
             dataset='riot_api',
             schema_name='raw',
             tables=['league_entries'],
@@ -27,7 +31,7 @@ defs = dg.Definitions(
             secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
         ),
         "youtube_bucket": ds_storage.StorageS3(
-            root=dg.EnvVar("ENV"),
+            root=DEPLOYMENT_NAME,
             dataset='youtube',
             schema_name='raw',
             tables=['audio'],
@@ -38,7 +42,7 @@ defs = dg.Definitions(
             secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
         ),
         "catalog_clean": ds_storage.StorageIceberg(
-            root=dg.EnvVar("ENV"),
+            root=DEPLOYMENT_NAME,
             dataset='riot_api',
             schema_name='clean',
             tables=list(ds_riot_api.SCHEMATA.keys()),

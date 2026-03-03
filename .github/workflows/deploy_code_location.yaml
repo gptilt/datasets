@@ -14,8 +14,8 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name }}
-    
+    environment: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
+
     permissions:
       contents: read
       packages: write 
@@ -42,7 +42,7 @@ jobs:
           # and the ref_name, for human readability.
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name == 'main' && 'dev' || 'prod' }}
 
       - name: Install Dagster Cloud CLI
         run: pip install dagster-cloud
