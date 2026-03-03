@@ -36,6 +36,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          build-args: |
+            IMAGE_SOURCE=https://github.com/${{ github.repository_owner }}/${{ github.repository }}
           push: true
           # We tag the image with the unique Git commit hash (github.sha)
           tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}

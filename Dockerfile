@@ -1,5 +1,7 @@
 FROM python:3.12-slim
 
+ARG IMAGE_SOURCE
+
 # Install uv
 RUN pip install uv
 
@@ -11,10 +13,11 @@ COPY packages/ ./packages/
 COPY src/ ./src/
 
 # Install the workspace (this will install orchestration and all ds-* packages)
-RUN uv sync --no-dev
+# '--system' installs the packages globally, instead of the virtual environment.
+RUN uv sync --no-dev --group cloud --system
 
 # Set the Python path so Dagster can find 'orchestration'
 ENV PYTHONPATH=/opt/dagster/app/src
 
 # Link this image to this repo
-LABEL org.opencontainers.image.source=https://github.com/gptilt/datasets
+LABEL org.opencontainers.image.source=${IMAGE_SOURCE}
