@@ -58,6 +58,4 @@ jobs:
             --location-name "${{ github.repository }}" \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --package-name ${{ env.DAGSTER_PACKAGE_NAME }} \
-            --git-url https://github.com/${{ github.repository }} \
-            --git-branch ${{ github.ref_name }} \
             --url ${{ secrets.DAGSTER_CLOUD_URL }}
