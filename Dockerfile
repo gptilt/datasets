@@ -29,9 +29,11 @@ RUN uv sync --no-dev --group cloud --frozen --no-cache
 # Add the venv's bin to PATH so dagster (and other scripts) are found
 ENV PATH="/opt/dagster/app/.venv/bin:$PATH"
 
-COPY src/ ./src/
+# Copy everything, not just src/
+COPY . .
 
 # Set the Python path so Dagster can find 'orchestration'
 ENV PYTHONPATH=/opt/dagster/app/src
+ENV DAGSTER_CLOUD_GIT_REPO_DIR=/opt/dagster/app
 
 LABEL org.opencontainers.image.source=${IMAGE_SOURCE}
