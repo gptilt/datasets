@@ -60,4 +60,5 @@ jobs:
             --package-name ${{ env.DAGSTER_PACKAGE_NAME }} \
             --url ${{ secrets.DAGSTER_CLOUD_URL }} \
             --git-url ${{ github.server_url }}/${{ github.repository }} \
-            --commit-hash ${{ github.sha }}
+            --commit-hash ${{ github.sha }} \
+            --location-file /opt/dagster/app
