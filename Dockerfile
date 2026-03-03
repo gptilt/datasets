@@ -11,12 +11,13 @@ WORKDIR /opt/dagster/app
 COPY pyproject.toml uv.lock ./
 COPY packages/ ./packages/
 
-# Install the packages globally, instead of venv.
-ENV UV_SYSTEM_PYTHON=1
+# Install the packages
 # --frozen ensures uv.lock is respected; --no-cache keeps the image lean
 RUN uv sync --no-dev --group cloud --frozen --no-cache
 
-# Copy source after deps to preserve cache on code-only changes
+# Add the venv's bin to PATH so dagster (and other scripts) are found
+ENV PATH="/opt/dagster/app/.venv/bin:$PATH"
+
 COPY src/ ./src/
 
 # Set the Python path so Dagster can find 'orchestration'
