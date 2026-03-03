@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - release
+      - prod
   workflow_dispatch:
 
 env:
