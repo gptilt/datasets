@@ -2,23 +2,25 @@ FROM python:3.12-slim
 
 ARG IMAGE_SOURCE
 
-# Install uv
-RUN pip install uv
+# Copy uv from the official image (faster, no pip needed)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 WORKDIR /opt/dagster/app
 
-# Copy the workspace configuration and package folders
+# Install deps first (cached unless pyproject.toml or uv.lock change)
 COPY pyproject.toml uv.lock ./
 COPY packages/ ./packages/
-COPY src/ ./src/
 
-# Install the packages globally, instead of venv.
-ENV UV_SYSTEM_PYTHON=1
-# Install the workspace (this will install orchestration and all ds-* packages)
-RUN uv sync --no-dev --group cloud
+# Install the packages
+# --frozen ensures uv.lock is respected; --no-cache keeps the image lean
+RUN uv sync --no-dev --group cloud --frozen --no-cache
+
+# Add the venv's bin to PATH so dagster (and other scripts) are found
+ENV PATH="/opt/dagster/app/.venv/bin:$PATH"
+
+COPY src/ ./src/
 
 # Set the Python path so Dagster can find 'orchestration'
 ENV PYTHONPATH=/opt/dagster/app/src
 
-# Link this image to this repo
 LABEL org.opencontainers.image.source=${IMAGE_SOURCE}
