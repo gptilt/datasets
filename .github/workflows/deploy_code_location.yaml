@@ -3,13 +3,12 @@ name: Deploy to Dagster Cloud
 on:
   push:
     branches:
-      - main
+      # - main
       - prod
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}
-  DAGSTER_LOCATION_NAME: "${{ github.repository_owner }}_${{ github.repository }}"
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
   DAGSTER_PACKAGE_NAME: "orchestration.definitions"  # The python module with the Definitions
 
 jobs:
@@ -40,7 +39,10 @@ jobs:
             IMAGE_SOURCE=https://github.com/${{ github.repository_owner }}/${{ github.repository }}
           push: true
           # We tag the image with the unique Git commit hash (github.sha)
-          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          # and the ref_name, for human readability.
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
 
       - name: Install Dagster Cloud CLI
         run: pip install dagster-cloud
@@ -50,7 +52,7 @@ jobs:
           DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
         run: |
           dagster-cloud workspace add-location \
-            --location-name ${{ env.DAGSTER_LOCATION_NAME }} \
+            --location-name "${{ github.repository }}" \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --package-name ${{ env.DAGSTER_PACKAGE_NAME }} \
             --url ${{ secrets.DAGSTER_CLOUD_URL }}

@@ -12,9 +12,10 @@ COPY pyproject.toml uv.lock ./
 COPY packages/ ./packages/
 COPY src/ ./src/
 
+# Install the packages globally, instead of venv.
+ENV UV_SYSTEM_PYTHON=1
 # Install the workspace (this will install orchestration and all ds-* packages)
-# '--system' installs the packages globally, instead of the virtual environment.
-RUN uv sync --no-dev --group cloud --system
+RUN uv sync --no-dev --group cloud
 
 # Set the Python path so Dagster can find 'orchestration'
 ENV PYTHONPATH=/opt/dagster/app/src
