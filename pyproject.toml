@@ -4,41 +4,42 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gptilt-datasets"
-version = "0.1.0"
-readme = "README.md"
-description = "Project for building a collection of League of Legends datasets"
-# license = {file = "LICENSE.txt"}
-requires-python = ">=3.11"
+version = "0.0.1"
+description = "Datasets for the League of Legends community!"
+requires-python = ">=3.12"
 dependencies = [
-    "aiohttp >=3.8.1",
-    "datasets >= 3.6.0",
-    "dorans >= 0.2.5",
-    "huggingface-hub >= 0.30.2",
-    "Jinja2 >= 3.1.6",
-    "matplotlib >= 3.10.1",
-    "polars >= 1.27.0",
-    "pyarrow >= 19.0.1",
-    "requests >= 2.31.0",
-    "tqdm >= 4.65.0",
+    "dagster>=1.11.8",
+    "dagster-cloud>=1.11.8",
+    "dagster-dg-cli>=1.11.8",
+    "dagster-webserver>=1.11.8",
+    "requests>=2.31.0",
+    # GPTilt Datasets Packages
+    "ds-cdragon",
+    "ds-common",
+    "ds-hugging-face",
+    "ds-riot-api",
+    "ds-storage",
+    "ds-tables",
+    "ds-youtube"
 ]
 
-[project.optional-dependencies]
-test = [
-    "asyncio >=0.26.0",
-    "pytest >=2.7.3",
-]
-analysis = [
-    "scikit-learn >= 1.6.1",
-    "seaborn >= 0.13.2",
-    "statsmodels >= 0.14.4"
-]
+[tool.uv.workspace]
+members = ["packages/*"]
 
-[project.scripts]
-ds-cdragon = "cdragon.main:main"
-ds-hf = "hugging_face.main:main"
-ds-riot-api = "riot_api.main:main"
-ds-tables = "tables.main:main"
+[tool.uv.sources]
+ds-cdragon = {workspace = true }
+ds-common = {workspace = true }
+ds-hugging-face = {workspace = true }
+ds-riot-api = {workspace = true }
+ds-storage = {workspace = true }
+ds-tables = {workspace = true }
+ds-youtube = {workspace = true }
 
-[tool.hatch.build]
-include = ["src/**"]
-sources = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/orchestration"]
+
+[tool.dg]
+directory_type = "project"
+
+[tool.dg.project]
+root_module = "orchestration"

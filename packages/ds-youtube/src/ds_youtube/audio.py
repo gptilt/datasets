@@ -1,0 +1,134 @@
+from .constants import AUDIO_EXTENSION, DATASET_NAME, PLAYLISTS
+import dagster as dg
+from ds_storage import StorageS3
+import os
+import tempfile
+import yt_dlp
+from yt_dlp.utils import DateRange
+
+
+# Define partitions
+partition_per_playlist = dg.StaticPartitionsDefinition(list(PLAYLISTS['audio'].keys()))
+partition_per_week = dg.WeeklyPartitionsDefinition(start_date="2024-01-01")
+partition_per_playlist_per_week = dg.MultiPartitionsDefinition({
+    "playlist": partition_per_playlist,
+    "time": partition_per_week,
+})
+
+
+@dg.asset(
+    name="raw_youtube_audio",
+    group_name=DATASET_NAME,
+    partitions_def=partition_per_playlist_per_week,
+)
+def asset_raw_youtube_audio(
+    context: dg.AssetExecutionContext,
+    youtube_bucket: StorageS3
+):
+    """
+    Downloads audio from YouTube and uploads to an S3 storage.
+    Returns metadata about the processed videos.
+    """
+    # Extract Partition Keys
+    # Multi-partitions require extracting the specific dimensions
+    partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
+    playlist_name = partition_keys["playlist"]
+    url = f"https://www.youtube.com/{PLAYLISTS['audio'].get(playlist_name)}"
+
+    # Extract Time Window and format for yt-dlp (YYYYMMDD)
+    time_window = context.partition_time_window
+    start_date_str = time_window.start.strftime('%Y%m%d')
+    end_date_str = time_window.end.strftime('%Y%m%d')
+
+    # Create a temporary directory for downloads
+    with tempfile.TemporaryDirectory() as temp_dir:
+        results = []
+
+        # yt-dlp options for Audio Only
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': AUDIO_EXTENSION,
+                'preferredquality': '192',
+            }],
+            # Filename = VideoID.m4a
+            'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+            # Date Range for yt-dlp
+            'daterange': DateRange(start_date_str, end_date_str),
+            # Stop fetching more pages once videos get too old
+            'break_on_reject': True,
+            # Do not fetch individual video pages during info extraction
+            # (the playlist object has all the information needed)
+            'extract_flat': 'in_playlist',
+            # Skip private/deleted/age-restricted videos without crashing
+            'ignoreerrors': True,
+            # Wait randomly between 2 and 5 seconds before downloading each video
+            'sleep_interval': 2,
+            'max_sleep_interval': 5,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            context.log.info(f"Processing: {url} from {start_date_str} to {end_date_str}")
+
+            # Extract Info (Metadata)
+            info = ydl.extract_info(url, download=False)
+            entries = info['entries']
+
+            # Iterate through downloaded videos and Upload to bucket
+            for entry in entries:
+                if not entry:
+                    # yt-dlp sometimes yields None for hidden/deleted videos
+                    continue
+                
+                video_id = entry.get('id')
+                title = entry.get('title')
+                context.log.info(f"Found video: {title} (id={video_id})")
+
+                # Define expected filename
+                object_name = f"{video_id}.{AUDIO_EXTENSION}"
+                local_path = os.path.join(temp_dir, object_name)
+
+                # We pass the already-extracted dictionary to avoid re-fetching metadata
+                try:
+                    full_info = ydl.process_ie_result(entry, download=True)
+                except yt_dlp.utils.RejectedVideoReached:
+                    break
+                # Get upload_date from the complete video information
+                upload_date = full_info.get('upload_date') if full_info else "Unknown"
+
+                # Sanity check in case the download failed but didn't throw an error
+                if not os.path.exists(local_path):
+                    context.log.warning(f"File not found for {title}, skipping: {local_path}")
+                    continue
+
+                # Upload to bucket
+                context.log.info(f"Uploading {title} (upload_date={upload_date}) to S3...")
+                youtube_bucket.upload_file(
+                    local_path,
+                    "audio",
+                    object_name,
+                    playlist=playlist_name
+                )
+
+                # Clean up local file to save space
+                os.remove(local_path)
+                context.log.info(f"Cleaned up local file for {title}")
+
+                # Collect Result Data
+                results.append({
+                    "title": title,
+                    "id": video_id,
+                    "upload_date": upload_date,
+                })
+
+    # Return result with rich metadata for the Dagster UI
+    return dg.MaterializeResult(
+        metadata={
+            "processed_count": len(results),
+            "videos": dg.MetadataValue.json(results),
+            "latest_video": results[-1]["title"] if results else "None"
+        }
+    )

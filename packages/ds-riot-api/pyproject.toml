@@ -1,0 +1,17 @@
+[project]
+name = "ds-riot-api"
+version = "0.1.0"
+dependencies = [
+    "aiohttp>=3.8.1",
+    "dorans>=0.2.5",
+    "requests",
+    "ds_common",
+    "ds_storage",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ds_riot_api"]

@@ -8,6 +8,14 @@ You can find the published datasets in [GPTilt's Hugging Face profile](https://h
 
 Alternatively, if you are interested in running the data pipelines yourself, find instructions [below](#getting-started).
 
+## Naming Convention
+
+1. A table or storage directory's fully qualified name is `root.dataset.schema.table`.
+2. The `root` is the environment (e.g. `dev`, `prod`).
+3. The `dataset` is the highest logical aggregator - typically the platform from which the data was originally collected (e.g. `riot_api`, `youtube`).
+4. The `schema` specifies the degree of quality of the data (e.g. `raw`, `clean`, `curated`).
+5. The `table` specifies a relation (e.g. `league_entries`, which contains data collected from the Riot API on player entries in a league).
+
 ## Basic
 
 Datasets are split into two tiers:

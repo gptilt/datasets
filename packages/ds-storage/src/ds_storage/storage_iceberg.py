@@ -1,0 +1,86 @@
+import pyarrow as pa
+from pydantic import PrivateAttr
+from pyiceberg.catalog.rest import RestCatalog
+from pyiceberg.partitioning import PartitionSpec
+from pyiceberg.schema import Schema
+from pyiceberg.table.sorting import SortOrder
+from .storage_base import Storage, NonEmptyStr
+
+
+class StorageIceberg(Storage):
+    """
+    Iceberg storage resource backed by a REST catalog.
+
+    Attributes
+    ----------
+    warehouse_name : str
+        Iceberg warehouse identifier.
+    catalog_uri : str
+        REST catalog URI.
+    token : str
+        Authentication token for the catalog.
+    """
+    warehouse_name: NonEmptyStr
+    catalog_uri: NonEmptyStr
+    token: NonEmptyStr
+    
+    # Declare a private attribute that Pydantic/Dagster ignores during serialization
+    _catalog: object = PrivateAttr(default=None)
+
+
+    def namespace(self):
+        return f"{self.dataset}.{self.schema_name}"
+
+
+    @property
+    def catalog(self):
+        if self._catalog is None:
+            self._catalog = RestCatalog(
+                name=self.root,
+                warehouse=self.warehouse_name,
+                uri=self.catalog_uri,
+                token=self.token
+            )
+
+        self._catalog.create_namespace_if_not_exists(self.namespace())
+
+        return self._catalog
+
+
+    def full_table_name(self, table_name: str):
+        return f"{self.namespace()}.{table_name}"
+
+
+    def create_table_if_not_exists(
+        self,
+        table_name: str,
+        schema: Schema = None,
+        partition_spec: PartitionSpec = None,
+        sort_order: SortOrder = None
+    ):
+        full_name = self.full_table_name(table_name)
+
+        if not self.catalog.table_exists(full_name):
+            return self.catalog.create_table(
+                full_name,
+                schema=schema,
+                partition_spec=partition_spec,
+                sort_order=sort_order
+            )
+        
+        return self.catalog.load_table(full_name)
+
+
+    def upsert_records(
+        self,
+        table_name: str,
+        list_of_records: list[dict],
+        schema: Schema = None,
+        partition_spec: PartitionSpec = None,
+        sort_order: SortOrder = None
+    ):
+        table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
+        table.upsert(pa.Table.from_pylist(
+            list_of_records,
+            schema=schema.as_arrow()
+        ))
