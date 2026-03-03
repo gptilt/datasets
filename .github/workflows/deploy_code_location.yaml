@@ -61,4 +61,4 @@ jobs:
             --url ${{ secrets.DAGSTER_CLOUD_URL }} \
             --git-url ${{ github.server_url }}/${{ github.repository }} \
             --commit-hash ${{ github.sha }} \
-            --location-file /opt/dagster/app
+            --file-path-mapping "/opt/dagster/app:/"
