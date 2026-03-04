@@ -1,5 +1,5 @@
 locations:
-  - location_name: gptilt/datasets
+  - location_name: datasets
     code_source:
       package_name: orchestration.definitions
     working_directory: ./src/

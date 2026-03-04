@@ -14,7 +14,7 @@ concurrency:
   group: ${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 env:
-  DAGSTER_LOCATION_NAME: ${{ github.repository }}
+  DAGSTER_LOCATION_NAME: datasets
   # The organization name in Dagster Cloud
   DAGSTER_CLOUD_ORGANIZATION: ${{ secrets.DAGSTER_CLOUD_ORGANIZATION }}
   # The API token from https://dagster.cloud/ should be stored in Secrets
