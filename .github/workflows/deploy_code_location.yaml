@@ -30,6 +30,9 @@ jobs:
   dagster-cloud-deploy:
     runs-on: ubuntu-22.04
     environment: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
+    permissions:
+      contents: read
+      packages: write
     steps:
       # If this is a closed PR the prerun step closes the branch deployment and returns
       # output.result='skip' which is used to skip other steps in this workflow.
