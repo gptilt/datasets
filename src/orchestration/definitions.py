@@ -8,9 +8,7 @@ DEPLOYMENT_NAME = os.getenv("DAGSTER_CLOUD_DEPLOYMENT_NAME", "local")
 
 
 defs = dg.Definitions(
-    assets=link_code_references_to_git_if_cloud(assets_defs=dg.with_source_code_references(
-        dg.load_assets_from_modules([ds_riot_api, ds_youtube])
-    )),
+    assets=dg.load_assets_from_modules([ds_riot_api, ds_youtube]),
     jobs=[
         ds_riot_api.job_riot_api_player_rank,
         ds_riot_api.job_riot_api_player_matches,
