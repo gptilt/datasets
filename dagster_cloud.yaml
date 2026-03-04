@@ -2,7 +2,6 @@ locations:
   - location_name: datasets
     code_source:
       package_name: orchestration.definitions
-    working_directory: ./src/
     build:
       directory: ./
       registry: ghcr.io/gptilt/datasets

@@ -25,7 +25,7 @@ env:
   DAGSTER_CLOUD_YAML_PATH: "dagster_cloud.yaml"
   # The IMAGE_REGISTRY should match the 'registry:'' in dagster_cloud.yaml
   IMAGE_REGISTRY: ghcr.io/${{ github.repository }}
-  IMAGE_TAG: ${{ github.ref_name }}
+  IMAGE_TAG: ${{ github.sha }}
 jobs:
   dagster-cloud-deploy:
     runs-on: ubuntu-22.04
