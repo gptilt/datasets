@@ -5,8 +5,3 @@ locations:
     build:
       directory: ./
       registry: ghcr.io/gptilt/datasets
-    run_coordinator:
-      module: dagster.core.run_coordinator
-      class: QueuedRunCoordinator
-      config:
-        max_concurrent_runs: 6
