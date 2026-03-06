@@ -42,9 +42,9 @@ async def asset_raw_riot_api_league_entries(
     """
     # Get the partition keys for the current run
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    date = date.fromisoformat(partition_keys["day"])
+    partition_date = date.fromisoformat(partition_keys["day"])
     server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
-    context.log.info(f"Fetching league entries for {date} - {server} - {tier} - {division}")
+    context.log.info(f"Fetching league entries for {partition_date} - {server} - {tier} - {division}")
 
     list_of_league_entries = []
 
@@ -91,9 +91,9 @@ async def asset_raw_riot_api_league_entries(
     riot_api_bucket.upload_json(
         list_of_league_entries_deduped,
         table_name="league_entries",
-        object_name=date,
-        year=date.year,
-        month=date.month,
+        object_name=partition_date,
+        year=partition_date.year,
+        month=partition_date.month,
         server=server,
         tier=tier,
         division=division,
@@ -113,6 +113,10 @@ async def asset_raw_riot_api_league_entries(
     deps=[asset_raw_riot_api_league_entries],
     name="clean_riot_api_player_rank",
     group_name=DATASET_NAME,
+    op_tags={
+        # Prevent concurrent runs
+        "dagster/concurrency_key": "fact_player_rank"
+    },
     partitions_def=partition_per_day_per_server_x_tier_x_division,
 )
 async def asset_clean_riot_api_player_rank(
@@ -127,13 +131,15 @@ async def asset_clean_riot_api_player_rank(
     """
     # Get the partition keys for the current run
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    date = partition_keys["day"]
+    partition_date = date.fromisoformat(partition_keys["day"])
     server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
  
     # Read raw file from S3 storage
     league_entries = riot_api_bucket.get_object(
         "league_entries",
-        object_name=date,
+        object_name=partition_date,
+        year=partition_date.year,
+        month=partition_date.month,
         server=server,
         tier=tier,
         division=division
