@@ -113,11 +113,8 @@ async def asset_raw_riot_api_league_entries(
     deps=[asset_raw_riot_api_league_entries],
     name="clean_riot_api_player_rank",
     group_name=DATASET_NAME,
-    op_tags={
-        # Prevent concurrent runs
-        "dagster/concurrency_key": "fact_player_rank"
-    },
     partitions_def=partition_per_day_per_server_x_tier_x_division,
+    pool="clean_riot_api_player_rank"
 )
 async def asset_clean_riot_api_player_rank(
     context: dg.AssetExecutionContext,
