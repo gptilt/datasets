@@ -42,7 +42,9 @@ class StorageIceberg(Storage):
                 token=self.token
             )
 
-        self._catalog.create_namespace_if_not_exists(self.namespace())
+        parts = self.namespace().split(".")
+        for i in range(1, len(parts) + 1):
+            self._catalog.create_namespace_if_not_exists(tuple(parts[:i]))
 
         return self._catalog
 
