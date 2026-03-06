@@ -3,7 +3,7 @@ from .get import *
 from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS
 from .schemata import SCHEMATA
 import dagster as dg
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from ds_storage import StorageS3, StorageIceberg
 import time
 
@@ -42,7 +42,7 @@ async def asset_raw_riot_api_league_entries(
     """
     # Get the partition keys for the current run
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    date = partition_keys["day"]
+    date = date.fromisoformat(partition_keys["day"])
     server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
     context.log.info(f"Fetching league entries for {date} - {server} - {tier} - {division}")
 
@@ -92,6 +92,8 @@ async def asset_raw_riot_api_league_entries(
         list_of_league_entries_deduped,
         table_name="league_entries",
         object_name=date,
+        year=date.year,
+        month=date.month,
         server=server,
         tier=tier,
         division=division,
