@@ -1,6 +1,6 @@
 from ds_common import no_backfills, tqdm_range
 from .get import *
-from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS
+from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, REGION_PER_SERVER
 from .schemata import SCHEMATA
 import dagster as dg
 from datetime import date, datetime, timezone
@@ -40,6 +40,7 @@ async def asset_raw_riot_api_league_entries(
 
     Each partition corresponds to a unique combination of day, server, tier, and division.
     """
+    start_time = time.time()
     # Get the partition keys for the current run
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
     partition_date = date.fromisoformat(partition_keys["day"])
@@ -101,10 +102,11 @@ async def asset_raw_riot_api_league_entries(
     
     yield dg.MaterializeResult(
         metadata={
-            "player_count": len(list_of_league_entries_deduped),
+            "duration_seconds": dg.MetadataValue.float(time.time() - start_time),
+            "player_count": dg.MetadataValue.int(len(list_of_league_entries_deduped)),
             # Log the number of pages queried,
             # to ensure it is below the constant that was set.
-            "api_pages_queried": page,
+            "api_pages_queried": dg.MetadataValue.int(page),
         }
     )
 
@@ -126,6 +128,7 @@ async def asset_clean_riot_api_player_rank(
 
     Each partition corresponds to a unique combination of day, server, tier, and division.
     """
+    start_time = time.time()
     # Get the partition keys for the current run
     partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
     partition_date = date.fromisoformat(partition_keys["day"])
@@ -182,7 +185,8 @@ async def asset_clean_riot_api_player_rank(
     
     yield dg.MaterializeResult(
         metadata={
-            "player_count": len(league_entries),
+            "duration_seconds": dg.MetadataValue.float(time.time() - start_time),
+            "player_count": dg.MetadataValue.int(len(league_entries)),
         }
     )
 
@@ -206,9 +210,13 @@ def schedule_riot_api_player_rank(context):
         dg.RunRequest(
             run_key=f"{today}|{server_x_tier_x_division}",
             partition_key=dg.MultiPartitionKey({
-                "day": today,
+                "day": str(today),
                 "server_x_tier_x_division": server_x_tier_x_division
             }),
+            tags={
+                # Apply a concurrency limit per region
+                "dagster/concurrency_key": f"fact_player_rank_region={REGION_PER_SERVER[server_x_tier_x_division.split('_')[0]]}"
+            }
         )
         for server_x_tier_x_division in partition_per_server_x_tier_x_division.get_partition_keys()
     ]
