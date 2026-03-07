@@ -1,6 +1,6 @@
 from ds_common import no_backfills, tqdm_range
 from .get import *
-from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS
+from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, REGION_PER_SERVER
 from .schemata import SCHEMATA
 import dagster as dg
 from datetime import date, datetime, timezone
@@ -213,6 +213,10 @@ def schedule_riot_api_player_rank(context):
                 "day": str(today),
                 "server_x_tier_x_division": server_x_tier_x_division
             }),
+            tags={
+                # Apply a concurrency limit per region
+                "dagster/concurrency_key": f"fact_player_rank_region={REGION_PER_SERVER[server_x_tier_x_division.split('_')[0]]}"
+            }
         )
         for server_x_tier_x_division in partition_per_server_x_tier_x_division.get_partition_keys()
     ]
