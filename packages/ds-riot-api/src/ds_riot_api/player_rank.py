@@ -206,7 +206,7 @@ def schedule_riot_api_player_rank(context):
         dg.RunRequest(
             run_key=f"{today}|{server_x_tier_x_division}",
             partition_key=dg.MultiPartitionKey({
-                "day": today,
+                "day": str(today),
                 "server_x_tier_x_division": server_x_tier_x_division
             }),
         )
