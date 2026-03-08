@@ -5,7 +5,7 @@ dependencies = [
     "boto3>=1.40.32",
     "polars",
     "pyarrow",
-    "pyiceberg>=0.11.0",
+    "pyiceberg",
 ]
 
 [build-system]
