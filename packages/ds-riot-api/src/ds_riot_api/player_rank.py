@@ -4,8 +4,9 @@ from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, REGION_PER_SERVE
 from .schemata import SCHEMATA
 import dagster as dg
 from datetime import date
-from ds_storage import StorageS3, StorageIceberg
+from ds_storage import StorageS3
 import polars as pl
+from pyiceberg.arrow import to_arrow_schema
 import time
 
 
@@ -188,7 +189,7 @@ def op_extract_and_process_league_entries(
         # Drop the old camelCase columns + queueType. 
         # strict=False ignores missing columns.
         .drop(["freshBlood", "hotStreak", "leagueId", "leaguePoints", "queueType"], strict=False)
-    ).to_arrow().cast(SCHEMATA['fact_player_rank']['schema'])
+    ).to_arrow().cast(to_arrow_schema(SCHEMATA['fact_player_rank']['schema']))
 
 
 @dg.op(
