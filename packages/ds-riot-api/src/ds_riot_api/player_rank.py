@@ -3,8 +3,9 @@ from .get import *
 from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, REGION_PER_SERVER
 from .schemata import SCHEMATA
 import dagster as dg
-from datetime import date, datetime, timezone
+from datetime import date
 from ds_storage import StorageS3, StorageIceberg
+import polars as pl
 import time
 
 
@@ -26,6 +27,24 @@ partition_per_day_per_server_x_tier_x_division = dg.MultiPartitionsDefinition({
 })
 
 
+def parse_partition(context):
+    keys = context.partition_key.keys_by_dimension
+    day = date.fromisoformat(keys["day"])
+    server, tier, division = keys["server_x_tier_x_division"].split("_")
+    return day, server, tier, division
+
+
+def get_tags_for_partition(partition_key: str):
+    # Split the multi-partition string "YYYY-MM-DD|server_tier_division"
+    # to get the 'server_tier_division' part
+    _day, server_x_tier_x_division = partition_key.split("|")
+    server = server_x_tier_x_division.split('_')[0]
+    return {
+        # Tag per region
+        "concurrency_group": f"fact_player_rank_region={REGION_PER_SERVER[server]}" 
+    }
+
+
 @dg.asset(
     name="raw_riot_api_league_entries",
     group_name=DATASET_NAME,
@@ -42,15 +61,14 @@ async def asset_raw_riot_api_league_entries(
     """
     start_time = time.time()
     # Get the partition keys for the current run
-    partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    partition_date = date.fromisoformat(partition_keys["day"])
-    server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
-    context.log.info(f"Fetching league entries for {partition_date} - {server} - {tier} - {division}")
+    day, server, tier, division = parse_partition(context)
+    context.log.info(f"Fetching league entries for {day} - {server} - {tier} - {division}")
 
-    list_of_league_entries = []
+    list_of_batches = []
 
     for page in tqdm_range(500, start=1):
         response = await fetch_with_rate_limit(
+            context,
             'league_entries',
             platform=server,
             tier=tier,
@@ -64,10 +82,12 @@ async def asset_raw_riot_api_league_entries(
             break
 
         # Add a timestamp to each entry
-        list_of_league_entries.extend([
-            dict(entry, timestamp=time.time())
-            for entry in response
-        ])
+        df_batch = pl.DataFrame(response).with_columns(
+            pl.lit(int(time.time())).alias("timestamp")
+        )
+        
+        # Append the DataFrame to our Python list (extremely fast)
+        list_of_batches.append(df_batch)
     
     # Duplication can occur for a number of reasons:
     # a) Ladder updates while fetching players.
@@ -76,34 +96,34 @@ async def asset_raw_riot_api_league_entries(
     # d) Players being removed from the ladder.
     # etc.
     # For this reason, we deduplicate the records.
-    latest = {}
+    player_count = 0
+    
+    if list_of_batches:
+        df = pl.concat(list_of_batches)
 
-    for e in list_of_league_entries:
-        latest[e["puuid"]] = max(
-            e,
-            latest.get(e["puuid"], e),
-            # Choose the latest entry based on the timestamp
-            key=lambda x: x["timestamp"]
+        # Sort by timestamp, then take the unique puuids, keeping the last (latest) one
+        df = (
+            df.sort("timestamp")
+            .unique(subset=["puuid"], keep="last")
         )
-    
-    list_of_league_entries_deduped = list(latest.values())
 
-    # Save raw file to S3 storage
-    riot_api_bucket.upload_json(
-        list_of_league_entries_deduped,
-        table_name="league_entries",
-        object_name=partition_date,
-        year=partition_date.year,
-        month=partition_date.month,
-        server=server,
-        tier=tier,
-        division=division,
-    )
-    
+        # Save raw file to S3 storage
+        riot_api_bucket.upload(
+            df,
+            table_name="league_entries",
+            object_name=day,
+            year=day.year,
+            month=day.month,
+            server=server,
+            tier=tier,
+            division=division,
+        )
+        player_count = len(df)
+
     yield dg.MaterializeResult(
         metadata={
             "duration_seconds": dg.MetadataValue.float(time.time() - start_time),
-            "player_count": dg.MetadataValue.int(len(list_of_league_entries_deduped)),
+            "player_count": dg.MetadataValue.int(player_count),
             # Log the number of pages queried,
             # to ensure it is below the constant that was set.
             "api_pages_queried": dg.MetadataValue.int(page),
@@ -111,112 +131,138 @@ async def asset_raw_riot_api_league_entries(
     )
 
 
-@dg.asset(
-    deps=[asset_raw_riot_api_league_entries],
-    name="clean_riot_api_player_rank",
-    group_name=DATASET_NAME,
-    partitions_def=partition_per_day_per_server_x_tier_x_division,
-    pool="clean_riot_api_player_rank"
+@dg.op(
+    ins={"raw_riot_api_league_entries": dg.In(dg.Nothing)},
+    required_resource_keys={"riot_api_bucket"},
 )
-async def asset_clean_riot_api_player_rank(
-    context: dg.AssetExecutionContext,
-    riot_api_bucket: StorageS3,
-    catalog_clean: StorageIceberg
+def op_extract_and_process_league_entries(
+    context: dg.OpExecutionContext,
 ):
-    """
-    Takes a batch of league entries and builds a clean snapshot of player ranks.
-
-    Each partition corresponds to a unique combination of day, server, tier, and division.
-    """
-    start_time = time.time()
     # Get the partition keys for the current run
-    partition_keys: dg.MultiPartitionKey = context.partition_key.keys_by_dimension
-    partition_date = date.fromisoformat(partition_keys["day"])
-    server, tier, division = partition_keys["server_x_tier_x_division"].split("_")
- 
-    # Read raw file from S3 storage
-    league_entries = riot_api_bucket.get_object(
+    day, server, tier, division = parse_partition(context)
+
+    # Read file from S3 storage
+    riot_api_bucket = context.resources.riot_api_bucket
+    df_league_entries = riot_api_bucket.get_object_as_dataframe(
         "league_entries",
-        object_name=partition_date,
-        year=partition_date.year,
-        month=partition_date.month,
+        object_name=day,
+        year=day.year,
+        month=day.month,
         server=server,
         tier=tier,
         division=division
     )
 
-    # Get matching player names and tags
-    for entry in league_entries:
-        entry['server'] = server
-        entry['division'] = division
+    # Apply vectorised transformations
+    return (
+        df_league_entries.with_columns([
+            # Add static values
+            pl.lit(server).alias("server"),
+            pl.lit(division).alias("division"),
+            
+            # Compute games played using defaults if null
+            (pl.col("wins").fill_null(0) + pl.col("losses").fill_null(0)).alias("games_played"),
+        ])
+        # Compute win rate safely to prevent division by zero
+        .with_columns([pl
+            .when(pl.col("games_played") > 0)
+            .then(pl.col("wins").fill_null(0) / pl.col("games_played"))
+            .otherwise(0.0)
+            .alias("win_rate")
+        ])
+        # Convert timestamp (epoch seconds) to UTC datetime
+        .with_columns([pl
+            .from_epoch(pl.col("timestamp").fill_null(0), time_unit="s")
+            .dt.replace_time_zone("UTC")
+            .alias("timestamp"),
+        ])
+        .with_columns([
+            # Extract date from the newly created timestamp
+            pl.col("timestamp").dt.date().alias("date"),
+            
+            # snake_case renaming and applying defaults
+            pl.col("freshBlood").fill_null(False).alias("fresh_blood"),
+            pl.col("hotStreak").fill_null(False).alias("hot_streak"),
+            pl.col("leagueId").alias("league_id"),  # None becomes null automatically
+            pl.col("leaguePoints").fill_null(0).alias("league_points"),
+        ])
+        # Drop the old camelCase columns + queueType. 
+        # strict=False ignores missing columns.
+        .drop(["freshBlood", "hotStreak", "leagueId", "leaguePoints", "queueType"], strict=False)
+    ).to_arrow()
 
-        # Compute basic statistics
-        entry['games_played'] = entry.get('wins', 0) + entry.get('losses', 0)
-        entry['win_rate'] = entry.get('wins', 0) / entry['games_played'] if entry['games_played'] > 0 else 0
 
-        # Rename variables to snake_case
-        entry['fresh_blood'] = entry.get('freshBlood', False)
-        entry['hot_streak'] = entry.get('hotStreak', False)
-        entry['league_id'] = entry.get('leagueId', None)
-        entry['league_points'] = entry.get('leaguePoints', 0)
-
-        # Convert unix timestamp to UTC
-        entry['timestamp'] = datetime.fromtimestamp(entry.get('timestamp', 0), tz=timezone.utc)
-        # Get date
-        entry['date'] = entry['timestamp'].date()
-
-        for key in (
-            'freshBlood',
-            'hotStreak',
-            'leagueId',
-            'leaguePoints',
-            'queueType',
-        ):
-            entry.pop(key, None)
-
+@dg.op(
+    pool='catalog_player_rank',
+    required_resource_keys={"catalog_clean"},
+)
+def op_upsert_fact_player_rank(context: dg.OpExecutionContext, table):
+    catalog_clean = context.resources.catalog_clean
     table_name = 'fact_player_rank'
-    catalog_clean.upsert_records(
+
+    catalog_clean.upsert_table(
         table_name,
-        list_of_records=league_entries,
+        pyarrow_table=table,
         schema=SCHEMATA[table_name]['schema'],
         partition_spec=SCHEMATA[table_name]['partition_spec'],
         sort_order=SCHEMATA[table_name]['sort_order'],
     )
-    
-    yield dg.MaterializeResult(
+
+    return dg.Output(
+        value=None, 
         metadata={
-            "duration_seconds": dg.MetadataValue.float(time.time() - start_time),
-            "player_count": dg.MetadataValue.int(len(league_entries)),
+            "player_count": dg.MetadataValue.int(len(table)),
         }
     )
 
 
-# Create a job scheduled to run daily
+@dg.graph_asset(
+    name="clean_riot_api_player_rank",
+    group_name=DATASET_NAME,
+    partitions_def=partition_per_day_per_server_x_tier_x_division,
+    ins={"raw_riot_api_league_entries": dg.AssetIn(dagster_type=dg.Nothing)}
+)
+def asset_clean_riot_api_player_rank(raw_riot_api_league_entries):
+    """
+    Takes a batch of league entries and builds a clean snapshot of player ranks.
+
+    Each partition corresponds to a unique combination of day, server, tier, and division.
+    """
+
+    table = op_extract_and_process_league_entries(raw_riot_api_league_entries)
+    return op_upsert_fact_player_rank(table)
+
+
+# Define a partitioned job config
+riot_job_config = dg.PartitionedConfig(
+    partitions_def=partition_per_day_per_server_x_tier_x_division,
+    run_config_for_partition_fn=lambda _: {},  # Return empty dict if run_config isn't used
+    tags_for_partition_key_fn=get_tags_for_partition
+)
+
+# Attach the config to the job
 job_riot_api_player_rank = dg.define_asset_job(
     name="job_riot_api_player_rank",
     selection=[
         asset_raw_riot_api_league_entries,
         asset_clean_riot_api_player_rank
     ],
+    config=riot_job_config, # <-- Now the job knows how to tag itself!
 )
 @dg.schedule(
     job=job_riot_api_player_rank,
-    cron_schedule="0 0 * * *",  # Run at 0:00 AM every day
+    cron_schedule="0 0 * * *",  
 )
 def schedule_riot_api_player_rank(context):
-     # Create a run request for each partition
     today = context.scheduled_execution_time.date()
-    return [
+    
+    return[
         dg.RunRequest(
             run_key=f"{today}|{server_x_tier_x_division}",
             partition_key=dg.MultiPartitionKey({
                 "day": str(today),
                 "server_x_tier_x_division": server_x_tier_x_division
-            }),
-            tags={
-                # Apply a concurrency limit per region
-                "dagster/concurrency_key": f"fact_player_rank_region={REGION_PER_SERVER[server_x_tier_x_division.split('_')[0]]}"
-            }
+            })
         )
         for server_x_tier_x_division in partition_per_server_x_tier_x_division.get_partition_keys()
     ]
