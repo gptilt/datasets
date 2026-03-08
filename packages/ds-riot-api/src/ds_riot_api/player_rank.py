@@ -173,7 +173,6 @@ def op_extract_and_process_league_entries(
         # Convert timestamp (epoch seconds) to UTC datetime
         .with_columns([pl
             .from_epoch(pl.col("timestamp").fill_null(0), time_unit="s")
-            .dt.replace_time_zone("UTC")
             .alias("timestamp"),
         ])
         .with_columns([
@@ -189,7 +188,7 @@ def op_extract_and_process_league_entries(
         # Drop the old camelCase columns + queueType. 
         # strict=False ignores missing columns.
         .drop(["freshBlood", "hotStreak", "leagueId", "leaguePoints", "queueType"], strict=False)
-    ).to_arrow()
+    ).to_arrow().cast(SCHEMATA['fact_player_rank']['schema'])
 
 
 @dg.op(
