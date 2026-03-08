@@ -3,8 +3,8 @@ name = "ds-storage"
 version = "0.1.0"
 dependencies = [
     "boto3>=1.40.32",
-    "polars>=1.30.0",
-    "pyarrow>=19.0.1",
+    "polars",
+    "pyarrow",
     "pyiceberg>=0.11.0",
 ]
 

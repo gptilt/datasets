@@ -1,4 +1,4 @@
-from ds_common import print, tqdm_range
+from ds_common import tqdm_range
 from datetime import datetime as dt
 import random
 

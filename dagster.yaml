@@ -1,0 +1,9 @@
+concurrency:
+  pools:
+    default_limit: 1
+  runs:
+    tag_concurrency_limits:
+      - key: 'concurrency_group'
+        value:
+          applyLimitPerUniqueValue: true
+        limit: 2

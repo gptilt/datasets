@@ -1,7 +1,9 @@
 import boto3
 from botocore.config import Config
+import io
 import json
 from pathlib import Path
+import polars as pl
 from pydantic import PrivateAttr
 from .storage_base import NonEmptyStr
 from .storage_file import StorageFile
@@ -47,39 +49,27 @@ class StorageS3(StorageFile):
             f"{object_name}.{self.file_extension}"
         )
 
-    def get_object(
+    def get_object_as_dataframe(
         self,
         table_name: str,
         object_name: str,
         **partition_columns: dict[str, str] | None
-    ) -> dict | None:
+    ) -> pl.DataFrame | None:
         """
-        Gets an object from S3.
+        Gets an object from S3 as a Polars DataFrame.
         """
-        try:
-            response = self.client.get_object(
-                Bucket=self.bucket_name,
-                Key=str(self.object_path(table_name, object_name, **partition_columns))
-            )
-            return json.loads(response['Body'].read())
-        except self.client.exceptions.NoSuchKey:
-            return None
-
-    def upload_json(
-        self,
-        data: dict,
-        table_name: str,
-        object_name: str,
-        **partition_columns: dict[str, str] | None
-    ):
-        """Uploads a JSON object to R2"""
-
-        self.client.put_object(
+        response = self.client.get_object(
             Bucket=self.bucket_name,
-            Key=str(self.object_path(table_name, object_name, **partition_columns)),
-            Body=json.dumps(data).encode("utf-8"),
-            ContentType='application/json'
+            Key=str(self.object_path(table_name, object_name, **partition_columns))
         )
+
+        match self.file_extension:
+            case 'json':
+                return pl.read_json(response['Body'].read())
+            case 'parquet':
+                return pl.read_parquet(response["Body"].read())
+            case _:
+                raise ValueError(f"Unsupported file extension: {self.file_extension}")
 
     def upload_file(
         self,
@@ -88,9 +78,42 @@ class StorageS3(StorageFile):
         object_name: str,
         **partition_columns: dict[str, str] | None
     ):
-        """Uploads a file to R2"""
+        """Uploads a file to S3"""
         self.client.upload_file(
             Filename=file_path,
             Bucket=self.bucket_name,
             Key=str(self.object_path(table_name, object_name, **partition_columns))
         )
+    
+    def upload(
+        self,
+        data: pl.DataFrame | list[dict],
+        table_name: str,
+        object_name: str,
+        **partition_columns: dict[str, str] | None
+    ):
+        assert isinstance(data, (pl.DataFrame, list)), "Data must be a DataFrame or a list of records"
+
+        object_key = str(self.object_path(table_name, object_name, **partition_columns))
+
+        match self.file_extension:
+            case 'json':
+                self.client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=object_key,
+                    Body=json.dumps(data).encode("utf-8"),
+                    ContentType='application/json'
+                )
+            case 'parquet':
+                buffer = io.BytesIO()
+                data.write_parquet(buffer)
+                buffer.seek(0)
+
+                self.client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=object_key,
+                    Body=buffer,
+                    ContentType='application/octet-stream'
+                )
+            case _:
+                raise ValueError(f"Uploads aren't supported for file extension: '{self.file_extension}'")
