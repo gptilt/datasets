@@ -2,7 +2,9 @@
 name = "ds-common"
 version = "0.1.0"
 dependencies = [
-    "tqdm>=4.65.0"
+    "pyarrow",
+    "pyiceberg",
+    "tqdm>=4.65.0",
 ]
 
 [build-system]

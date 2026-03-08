@@ -9,9 +9,9 @@ description = "Datasets for the League of Legends community!"
 requires-python = ">=3.12"
 dependencies = [
     "dagster>=1.11.8",
-    "polars>=1.30.0",
-    "pyarrow>=19.0.1",
-    "pyiceberg[pyarrow]>=0.11.0",
+    "polars>=1.28",
+    "pyarrow==18.1",
+    "pyiceberg>=0.10",
     "requests>=2.31.0",
     # GPTilt Datasets Packages
     "ds-cdragon",
