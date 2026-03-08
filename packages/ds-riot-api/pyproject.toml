@@ -6,7 +6,7 @@ dependencies = [
     "dorans>=0.2.5",
     "polars",
     "pyarrow",
-    "pyiceberg[pyarrow]",
+    "pyiceberg",
     "requests",
     "ds_common",
     "ds_storage",
