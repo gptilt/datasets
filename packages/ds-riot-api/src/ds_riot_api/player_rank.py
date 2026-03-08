@@ -173,7 +173,6 @@ def op_extract_and_process_league_entries(
         # Convert timestamp (epoch seconds) to UTC datetime
         .with_columns([pl
             .from_epoch(pl.col("timestamp").fill_null(0), time_unit="s")
-            .dt.replace_time_zone("UTC")
             .alias("timestamp"),
         ])
         .with_columns([
@@ -189,7 +188,7 @@ def op_extract_and_process_league_entries(
         # Drop the old camelCase columns + queueType. 
         # strict=False ignores missing columns.
         .drop(["freshBlood", "hotStreak", "leagueId", "leaguePoints", "queueType"], strict=False)
-    ).to_arrow()
+    ).to_arrow().cast(SCHEMATA['fact_player_rank']['schema'])
 
 
 @dg.op(
@@ -227,6 +226,17 @@ def asset_clean_riot_api_player_rank(raw_riot_api_league_entries):
     Takes a batch of league entries and builds a clean snapshot of player ranks.
 
     Each partition corresponds to a unique combination of day, server, tier, and division.
+
+    This asset is divided into two ops:
+    - Extraction and processing of league entries;
+    - Upsert of processed player rank data into the fact table.
+
+    This separation is for performance reasons:
+    - The upsert operation is bound by the catalog's write throughput limits,
+      which, for a REST catalog, is just 1 write at a time.
+    - The extraction and processing of league entries, on the other hand,
+      is compute-intensive, and thus should be parallelized
+      (within reason, because the worker could otherwise run out of memory).
     """
 
     table = op_extract_and_process_league_entries(raw_riot_api_league_entries)
