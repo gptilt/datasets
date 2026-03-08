@@ -138,7 +138,7 @@ async def asset_raw_riot_api_league_entries(
 )
 def op_extract_and_process_league_entries(
     context: dg.OpExecutionContext,
-):
+) -> pl.DataFrame:
     # Get the partition keys for the current run
     day, server, tier, division = parse_partition(context)
 
@@ -189,16 +189,25 @@ def op_extract_and_process_league_entries(
         # Drop the old camelCase columns + queueType. 
         # strict=False ignores missing columns.
         .drop(["freshBlood", "hotStreak", "leagueId", "leaguePoints", "queueType"], strict=False)
-    ).to_arrow().cast(schema_to_pyarrow(SCHEMATA['fact_player_rank']['schema']))
+    )
 
 
 @dg.op(
     pool='catalog_player_rank',
     required_resource_keys={"catalog_clean"},
 )
-def op_upsert_fact_player_rank(context: dg.OpExecutionContext, table):
+def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame):
     catalog_clean = context.resources.catalog_clean
     table_name = 'fact_player_rank'
+
+    table = (df
+        # Reorder Polars DataFrame
+        .select([f.name for f in SCHEMATA[table_name]['schema'].fields])
+        # Convert to Arrow
+        .to_arrow()
+        # Cast to target schema
+        .cast(schema_to_pyarrow(SCHEMATA[table_name]['schema']))
+    )
 
     catalog_clean.upsert_table(
         table_name,
