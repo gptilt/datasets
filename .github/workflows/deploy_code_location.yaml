@@ -47,6 +47,16 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
+      # Update Dagster deployment settings
+      - name: Update Dagster deployment settings
+        if: steps.prerun.outputs.result != 'skip'
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ env.DAGSTER_CLOUD_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://${{ env.DAGSTER_CLOUD_ORGANIZATION }}.dagster.cloud/prod/graphql \
+            -d @dagster_deployment_settings.graphql.json
+
       # Validate dagster_cloud.yaml and the connection to dagster.cloud
       - name: Validate configuration
         id: ci-validate
