@@ -1,6 +1,8 @@
 from tqdm import tqdm
 
+
 print = lambda x: tqdm.write(str(x))
+
 
 def tqdm_range(
     stop,
@@ -9,7 +11,10 @@ def tqdm_range(
     start: int = 0,
     step: int = 1,
 ):
-    return tqdm(range(start, stop, step), desc=f"[{desc}]".ljust(category_width))
+    return tqdm(
+        range(start, stop, step),
+        desc=f"[{desc}]".ljust(category_width)
+    )
 
 
 def work_generator(

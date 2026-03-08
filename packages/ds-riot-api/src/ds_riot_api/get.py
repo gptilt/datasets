@@ -1,6 +1,5 @@
 import aiohttp
 import asyncio
-from ds_common import print
 import dagster as dg
 
 
@@ -16,8 +15,10 @@ ENDPOINTS = {
     'player_riot_account': lambda region, puuid:
         f"{BASE_URL_REGION(region)}/riot/account/v1/accounts/by-puuid/{puuid}",
 
-    'player_match_ids': lambda region, puuid, queue, type, count:
-        f"{BASE_URL_REGION(region)}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&queue={queue}&type={type}&count={count}",
+    'player_match_ids': lambda region, puuid, queue, type, count, start_time, end_time:
+        f"{BASE_URL_REGION(region)}/lol/match/v5/matches/by-puuid/{puuid}/ids"
+        f"?startTime={start_time}&endTime={end_time}"
+        f"&start=0&queue={queue}&type={type}&count={count}",
 
     'match_info': lambda region, match_id:
         f"{BASE_URL_REGION(region)}/lol/match/v5/matches/{match_id}",
@@ -28,7 +29,12 @@ ENDPOINTS = {
 RIOT_API_KEY = dg.EnvVar('RIOT_API_KEY').get_value()
 
 
-async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = None, **kwargs) -> dict:
+async def fetch_with_rate_limit(
+    context: dg.AssetExecutionContext,
+    endpoint: str,
+    session: aiohttp.ClientSession = None,
+    **kwargs
+) -> dict:
     """
     Fetches data from the Riot API.
     Waits for rate limit if exceeded.
@@ -46,19 +52,19 @@ async def fetch_with_rate_limit(endpoint: str, session: aiohttp.ClientSession = 
             async with session.get(url, headers={"X-Riot-Token": RIOT_API_KEY}) as response:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", 30))
-                    print(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")
+                    context.log.info(f"[RATE LIMIT] {endpoint} - waiting {retry_after}s")
                     await asyncio.sleep(retry_after)
                     continue
                 elif response.status == 502:
-                    print(f"[BAD GATEWAY] {endpoint} - retrying...")
+                    context.log.info(f"[BAD GATEWAY] {endpoint} - retrying...")
                     await asyncio.sleep(5)
                     continue
                 elif response.status == 503:
-                    print(f"[SERVER UNAVAILABLE] {endpoint} - retrying...")
+                    context.log.info(f"[SERVER UNAVAILABLE] {endpoint} - retrying...")
                     await asyncio.sleep(5)
                     continue
                 elif response.status == 504:
-                    print(f"[GATEWAY TIMEOUT] {endpoint} - retrying...")
+                    context.log.info(f"[GATEWAY TIMEOUT] {endpoint} - retrying...")
                     await asyncio.sleep(5)
                     continue
                 elif response.status != 200:
