@@ -86,7 +86,7 @@ class StorageIceberg(Storage):
         backoff_factor: int = 2,
     ):
         """
-        Attempt to upload a DataFrame to S3, retrying on failure.
+        Attempt to upsert a DataFrame to Iceberg, retrying on failure.
         """
         table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
 
