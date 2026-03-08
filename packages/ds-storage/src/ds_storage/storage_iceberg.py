@@ -4,6 +4,8 @@ from pyiceberg.catalog.rest import RestCatalog
 from pyiceberg.partitioning import PartitionSpec
 from pyiceberg.schema import Schema
 from pyiceberg.table.sorting import SortOrder
+import random
+import time
 from .storage_base import Storage, NonEmptyStr
 
 
@@ -79,10 +81,27 @@ class StorageIceberg(Storage):
         pyarrow_table: pa.Table,
         schema: Schema = None,
         partition_spec: PartitionSpec = None,
-        sort_order: SortOrder = None
+        sort_order: SortOrder = None,
+        retries: int = 3,
+        backoff_factor: int = 2,
     ):
+        """
+        Attempt to upsert a DataFrame to Iceberg, retrying on failure.
+        """
         table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
-        table.upsert(pyarrow_table)
+
+        attempt = 0
+        while attempt < retries:
+            try:
+                table.upsert(pyarrow_table)
+                return  # Success
+            except Exception as e:
+                attempt += 1
+                wait_time = backoff_factor ** attempt + random.random()  # jitter
+                print(f"Upsert failed (attempt {attempt}/{retries}): {e}. Retrying in {wait_time:.1f}s...")
+                time.sleep(wait_time)
+        # If we exit the loop, all retries failed
+        raise RuntimeError(f"Failed to upsert {table_name} after {retries} attempts")
 
 
     def upsert_records(
