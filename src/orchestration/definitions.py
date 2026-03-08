@@ -1,5 +1,4 @@
 import dagster as dg
-from dagster_cloud.metadata.source_code import link_code_references_to_git_if_cloud
 import ds_riot_api, ds_youtube, ds_storage
 import os
 
@@ -23,6 +22,7 @@ defs = dg.Definitions(
             dataset='riot_api',
             schema_name='raw',
             tables=['league_entries'],
+            file_extension='parquet',
             bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
             bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
             access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),

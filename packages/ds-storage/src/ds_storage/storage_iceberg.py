@@ -73,6 +73,18 @@ class StorageIceberg(Storage):
         return self.catalog.load_table(full_name)
 
 
+    def upsert_table(
+        self,
+        table_name: str,
+        pyarrow_table: pa.Table,
+        schema: Schema = None,
+        partition_spec: PartitionSpec = None,
+        sort_order: SortOrder = None
+    ):
+        table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
+        table.upsert(pyarrow_table)
+
+
     def upsert_records(
         self,
         table_name: str,
@@ -81,8 +93,11 @@ class StorageIceberg(Storage):
         partition_spec: PartitionSpec = None,
         sort_order: SortOrder = None
     ):
-        table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
-        table.upsert(pa.Table.from_pylist(
-            list_of_records,
-            schema=schema.as_arrow()
-        ))
+        self.upsert_table(
+            table_name,
+            pa.Table.from_pylist(list_of_records, schema=schema.as_arrow()),
+            schema=schema,
+            partition_spec=partition_spec,
+            sort_order=sort_order
+        )
+    
