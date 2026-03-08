@@ -748,6 +748,8 @@ dependencies = [
     { name = "dorans" },
     { name = "ds-common" },
     { name = "ds-storage" },
+    { name = "polars" },
+    { name = "pyarrow" },
     { name = "requests" },
 ]
 
@@ -757,6 +759,8 @@ requires-dist = [
     { name = "dorans", specifier = ">=0.2.5" },
     { name = "ds-common", editable = "packages/ds-common" },
     { name = "ds-storage", editable = "packages/ds-storage" },
+    { name = "polars" },
+    { name = "pyarrow" },
     { name = "requests" },
 ]
 
@@ -774,8 +778,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = ">=1.40.32" },
-    { name = "polars", specifier = ">=1.30.0" },
-    { name = "pyarrow", specifier = ">=19.0.1" },
+    { name = "polars" },
+    { name = "pyarrow" },
     { name = "pyiceberg", specifier = ">=0.11.0" },
 ]
 
@@ -935,6 +939,8 @@ dependencies = [
     { name = "ds-storage" },
     { name = "ds-tables" },
     { name = "ds-youtube" },
+    { name = "polars" },
+    { name = "pyarrow" },
     { name = "requests" },
 ]
 
@@ -957,6 +963,8 @@ requires-dist = [
     { name = "ds-storage", editable = "packages/ds-storage" },
     { name = "ds-tables", editable = "packages/ds-tables" },
     { name = "ds-youtube", editable = "packages/ds-youtube" },
+    { name = "polars", specifier = ">=1.30.0" },
+    { name = "pyarrow", specifier = ">=19.0.1" },
     { name = "requests", specifier = ">=2.31.0" },
 ]
 

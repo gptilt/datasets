@@ -4,6 +4,8 @@ version = "0.1.0"
 dependencies = [
     "aiohttp>=3.8.1",
     "dorans>=0.2.5",
+    "polars",
+    "pyarrow",
     "requests",
     "ds_common",
     "ds_storage",
