@@ -236,8 +236,8 @@ def asset_clean_riot_api_player_rank(raw_riot_api_league_entries):
     - The upsert operation is bound by the catalog's write throughput limits,
       which, for a REST catalog, is just 1 write at a time.
     - The extraction and processing of league entries, on the other hand,
-      is compute-intensive, and thus should be parallelized,
-      within reason (because the worker could otherwise run out of memory).
+      is compute-intensive, and thus should be parallelized
+      (within reason, because the worker could otherwise run out of memory).
     """
 
     table = op_extract_and_process_league_entries(raw_riot_api_league_entries)
