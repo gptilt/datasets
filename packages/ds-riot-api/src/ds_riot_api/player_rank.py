@@ -193,8 +193,8 @@ def op_extract_and_process_league_entries(
 
 
 @dg.op(
-    pool='catalog_player_rank',
     required_resource_keys={"catalog_clean"},
+    tags={"concurrency_group": "catalog_clean"}
 )
 def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame):
     catalog_clean = context.resources.catalog_clean
