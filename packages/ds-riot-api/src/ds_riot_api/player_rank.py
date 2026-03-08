@@ -1,4 +1,4 @@
-from ds_common import no_backfills, tqdm_range
+from ds_common import iceberg_to_polars_schema, no_backfills, tqdm_range
 from .get import *
 from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, REGION_PER_SERVER
 from .schemata import SCHEMATA
@@ -6,7 +6,6 @@ import dagster as dg
 from datetime import date
 from ds_storage import StorageS3
 import polars as pl
-from pyiceberg.io.pyarrow import schema_to_pyarrow
 import time
 
 
@@ -199,20 +198,23 @@ def op_extract_and_process_league_entries(
 def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame):
     catalog_clean = context.resources.catalog_clean
     table_name = 'fact_player_rank'
+    schema = SCHEMATA[table_name]['schema']
+    polars_schema = iceberg_to_polars_schema(schema)
 
+    # Shared categorical buffers may cause Arrow segfaults
+    pl.disable_string_cache()
     table = (df
         # Reorder Polars DataFrame
-        .select([f.name for f in SCHEMATA[table_name]['schema'].fields])
+        .select(polars_schema.keys())
+        .cast(polars_schema)
         # Convert to Arrow
         .to_arrow()
-        # Cast to target schema
-        .cast(schema_to_pyarrow(SCHEMATA[table_name]['schema']))
     )
 
     catalog_clean.upsert_table(
         table_name,
         pyarrow_table=table,
-        schema=SCHEMATA[table_name]['schema'],
+        schema=schema,
         partition_spec=SCHEMATA[table_name]['partition_spec'],
         sort_order=SCHEMATA[table_name]['sort_order'],
     )
