@@ -84,6 +84,11 @@ async def asset_raw_riot_api_league_entries(
                 platform=server,
                 elite_tier=tier
             )
+            entries = response.pop('entries')
+            league_entries = [
+                {**response, **entry}
+                for entry in entries
+            ]
         else:
             response = await fetch_with_rate_limit(
                 context,
@@ -207,9 +212,6 @@ def op_extract_and_process_league_entries(
             pl.col("leagueId").alias("league_id"),  # None becomes null automatically
             pl.col("leaguePoints").fill_null(0).alias("league_points"),
         ])
-        # Drop the old camelCase columns + queueType. 
-        # strict=False ignores missing columns.
-        .drop(["freshBlood", "hotStreak", "leagueId", "leaguePoints", "queueType"], strict=False)
     )
 
 
