@@ -33,6 +33,7 @@ TIERS = [
     "SILVER",
     "GOLD",
     "PLATINUM",
+    "EMERALD",
     "DIAMOND"
 ]
 DIVISIONS = ["I", "II", "III", "IV"]
