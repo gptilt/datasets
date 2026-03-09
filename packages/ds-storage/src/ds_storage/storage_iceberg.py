@@ -94,6 +94,7 @@ class StorageIceberg(Storage):
         attempt = 0
         while attempt < retries:
             try:
+                table.refresh()  # force re-read of current metadata
                 match mode:
                     case 'append':
                         table.append(pyarrow_table)
@@ -105,7 +106,7 @@ class StorageIceberg(Storage):
             except Exception as e:
                 attempt += 1
                 wait_time = backoff_factor ** attempt + random.random()  # jitter
-                print(f"Upsert failed (attempt {attempt}/{retries}): {e}. Retrying in {wait_time:.1f}s...")
+                print(f"Write failed (attempt {attempt}/{retries}): {e}. Retrying in {wait_time:.1f}s...")
                 time.sleep(wait_time)
         # If we exit the loop, all retries failed
         raise RuntimeError(f"Failed to write to '{table_name}' with mode '{mode}' after {retries} attempts")
