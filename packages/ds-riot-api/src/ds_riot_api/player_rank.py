@@ -1,4 +1,4 @@
-from ds_common import iceberg_to_polars_schema, no_backfills, tqdm_range
+from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema, no_backfills, tqdm_range
 from .get import *
 from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, ELITE_TIERS, REGION_PER_SERVER
 from .schemata import SCHEMATA
@@ -215,17 +215,8 @@ def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame)
     catalog_clean = context.resources.catalog_clean
     table_name = 'fact_player_rank'
     schema = SCHEMATA[table_name]['schema']
-    polars_schema = iceberg_to_polars_schema(schema)
 
-    # Shared categorical buffers may cause Arrow segfaults
-    pl.disable_string_cache()
-    table = (df
-        # Reorder Polars DataFrame
-        .select(polars_schema.keys())
-        .cast(polars_schema)
-        # Convert to Arrow
-        .to_arrow()
-    )
+    table = convert_polars_df_to_pyarrow_table_using_iceberg_schema(df, schema)
 
     catalog_clean.upsert_table(
         table_name,
