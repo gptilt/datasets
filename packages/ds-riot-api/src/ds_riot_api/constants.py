@@ -2,20 +2,25 @@ DATASET_NAME = 'riot_api'
 
 REGIONS_AND_PLATFORMS = {
     "americas": {
-        "br1",
-        "la1",
-        "la2",
-        "na1",
+        "br1",  # Brazil 1
+        "la1",  # Latin America North
+        "la2",  # Latin America South
+        "na1",  # North America 1
     },
     "asia": {
-        "jp1",
-        "kr",
-        "vn2",
+        "jp1",  # Japan 1
+        "kr",   # Korea
+        "oc1",  # Oceania 1
+        "sg2",  # Southeast Asia 2
+        "tw2",  # Taiwan 2
+        "vn2",  # Vietnam 2
     },
     "europe": {
-        "eun1",
-        "euw1",
-        "tr1",
+        "eun1",  # Europe North 1
+        "euw1",  # Europe West 1
+        "me1",   # Middle East 1
+        "ru",    # Russia
+        "tr1",   # Turkey 1
     },
 }
 REGIONS = list(REGIONS_AND_PLATFORMS.keys())
@@ -31,3 +36,8 @@ TIERS = [
     "DIAMOND"
 ]
 DIVISIONS = ["I", "II", "III", "IV"]
+ELITE_TIERS = [
+    "MASTER",
+    "GRANDMASTER",
+    "CHALLENGER"
+]
