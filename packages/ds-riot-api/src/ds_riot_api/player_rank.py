@@ -224,9 +224,10 @@ def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame)
 
     table = convert_polars_df_to_pyarrow_table_using_iceberg_schema(df, schema)
 
-    catalog_clean.upsert_table(
+    catalog_clean.write_table(
         table_name,
         pyarrow_table=table,
+        mode='append',
         schema=schema,
         partition_spec=SCHEMATA[table_name]['partition_spec'],
         sort_order=SCHEMATA[table_name]['sort_order'],
