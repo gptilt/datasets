@@ -83,7 +83,7 @@ class StorageIceberg(Storage):
         schema: Schema = None,
         partition_spec: PartitionSpec = None,
         sort_order: SortOrder = None,
-        retries: int = 3,
+        retries: int = 5,
         backoff_factor: int = 2,
     ):
         """
