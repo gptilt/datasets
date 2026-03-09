@@ -31,7 +31,7 @@
                 {
                   "key": "concurrency_group",
                   "value": { "applyLimitPerUniqueValue": true },
-                  "limit": 1
+                  "limit": 2
                 }
               ]
             }

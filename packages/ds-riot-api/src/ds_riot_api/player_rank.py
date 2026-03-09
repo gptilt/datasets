@@ -1,6 +1,6 @@
-from ds_common import iceberg_to_polars_schema, no_backfills, tqdm_range
+from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema, no_backfills, tqdm_range
 from .get import *
-from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, REGION_PER_SERVER
+from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, ELITE_TIERS, REGION_PER_SERVER
 from .schemata import SCHEMATA
 import dagster as dg
 from datetime import date
@@ -19,6 +19,10 @@ partition_per_server_x_tier_x_division = dg.StaticPartitionsDefinition([
     f"{server}_{tier}_{division}"
     for tier in TIERS
     for division in DIVISIONS
+    for server in SERVERS
+] + [
+    f"{server}_{elite_tier}_I"
+    for elite_tier in ELITE_TIERS
     for server in SERVERS
 ])
 partition_per_day_per_server_x_tier_x_division = dg.MultiPartitionsDefinition({
@@ -67,19 +71,27 @@ async def asset_raw_riot_api_league_entries(
     list_of_batches = []
 
     for page in tqdm_range(500, start=1):
-        response = await fetch_with_rate_limit(
-            context,
-            'league_entries',
-            platform=server,
-            tier=tier,
-            division=division,
-            page=page
-        )
+        if tier in ELITE_TIERS:
+            response = await fetch_with_rate_limit(
+                context,
+                'league_entries_elite',
+                platform=server,
+                tier=tier
+            )
+        else:
+            response = await fetch_with_rate_limit(
+                context,
+                'league_entries',
+                platform=server,
+                tier=tier,
+                division=division,
+                page=page
+            )
 
-        # Pages after the maximum return an empty list.
-        if len(response) == 0:
-            context.log.info("No more pages to fetch")
-            break
+            # Pages after the maximum return an empty list.
+            if len(response) == 0:
+                context.log.info("No more pages to fetch")
+                break
 
         # Add a timestamp to each entry
         df_batch = pl.DataFrame(response).with_columns(
@@ -88,6 +100,10 @@ async def asset_raw_riot_api_league_entries(
         
         # Append the DataFrame to our Python list (extremely fast)
         list_of_batches.append(df_batch)
+
+        # Elite tiers have a single page only
+        if tier in ELITE_TIERS:
+            break
     
     # Duplication can occur for a number of reasons:
     # a) Ladder updates while fetching players.
@@ -199,17 +215,8 @@ def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame)
     catalog_clean = context.resources.catalog_clean
     table_name = 'fact_player_rank'
     schema = SCHEMATA[table_name]['schema']
-    polars_schema = iceberg_to_polars_schema(schema)
 
-    # Shared categorical buffers may cause Arrow segfaults
-    pl.disable_string_cache()
-    table = (df
-        # Reorder Polars DataFrame
-        .select(polars_schema.keys())
-        .cast(polars_schema)
-        # Convert to Arrow
-        .to_arrow()
-    )
+    table = convert_polars_df_to_pyarrow_table_using_iceberg_schema(df, schema)
 
     catalog_clean.upsert_table(
         table_name,
