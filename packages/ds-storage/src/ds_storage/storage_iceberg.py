@@ -75,10 +75,11 @@ class StorageIceberg(Storage):
         return self.catalog.load_table(full_name)
 
 
-    def upsert_table(
+    def write_table(
         self,
         table_name: str,
         pyarrow_table: pa.Table,
+        mode: str = 'append',
         schema: Schema = None,
         partition_spec: PartitionSpec = None,
         sort_order: SortOrder = None,
@@ -86,14 +87,20 @@ class StorageIceberg(Storage):
         backoff_factor: int = 2,
     ):
         """
-        Attempt to upsert a DataFrame to Iceberg, retrying on failure.
+        Attempt to write a PyArrow table to Iceberg, retrying on failure.
         """
         table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
 
         attempt = 0
         while attempt < retries:
             try:
-                table.upsert(pyarrow_table)
+                match mode:
+                    case 'append':
+                        table.append(pyarrow_table)
+                    case 'upsert':
+                        table.upsert(pyarrow_table)
+                    case _:
+                        raise ValueError(f"Unsupported write mode: '{mode}'")
                 return  # Success
             except Exception as e:
                 attempt += 1
@@ -101,7 +108,7 @@ class StorageIceberg(Storage):
                 print(f"Upsert failed (attempt {attempt}/{retries}): {e}. Retrying in {wait_time:.1f}s...")
                 time.sleep(wait_time)
         # If we exit the loop, all retries failed
-        raise RuntimeError(f"Failed to upsert {table_name} after {retries} attempts")
+        raise RuntimeError(f"Failed to write to '{table_name}' with mode '{mode}' after {retries} attempts")
 
 
     def upsert_records(

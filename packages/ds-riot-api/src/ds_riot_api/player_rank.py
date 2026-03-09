@@ -16,6 +16,12 @@ partition_per_day = dg.DailyPartitionsDefinition(
     end_offset=1
 )
 partition_per_server_x_tier_x_division = dg.StaticPartitionsDefinition([
+    # We sort by server, division first, and tier last,
+    # because some tiers have significantly higher player counts.
+    # Sorting this way helps balance the load throughout the process,
+    # because tiers are interleaved:
+    # all "I" divisions (across all tiers) are processed first,
+    # then "II", and so on.
     f"{server}_{tier}_{division}"
     for division in DIVISIONS
     for tier in TIERS
@@ -76,7 +82,7 @@ async def asset_raw_riot_api_league_entries(
                 context,
                 'league_entries_elite',
                 platform=server,
-                tier=tier
+                elite_tier=tier
             )
         else:
             response = await fetch_with_rate_limit(
@@ -218,9 +224,10 @@ def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame)
 
     table = convert_polars_df_to_pyarrow_table_using_iceberg_schema(df, schema)
 
-    catalog_clean.upsert_table(
+    catalog_clean.write_table(
         table_name,
         pyarrow_table=table,
+        mode='append',
         schema=schema,
         partition_spec=SCHEMATA[table_name]['partition_spec'],
         sort_order=SCHEMATA[table_name]['sort_order'],
