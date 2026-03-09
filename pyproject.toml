@@ -11,7 +11,7 @@ dependencies = [
     "dagster>=1.11.8",
     "polars>=1.28",
     "pyarrow==18.1",
-    "pyiceberg>=0.10",
+    "pyiceberg[pyiceberg-core]>=0.10",
     "requests>=2.31.0",
     # GPTilt Datasets Packages
     "ds-cdragon",
