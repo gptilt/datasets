@@ -16,6 +16,12 @@ partition_per_day = dg.DailyPartitionsDefinition(
     end_offset=1
 )
 partition_per_server_x_tier_x_division = dg.StaticPartitionsDefinition([
+    # We sort by server, division first, and tier last,
+    # because some tiers have significantly higher player counts.
+    # Sorting this way helps balance the load throughout the process,
+    # because tiers are interleaved:
+    # all "I" divisions (across all tiers) are processed first,
+    # then "II", and so on.
     f"{server}_{tier}_{division}"
     for division in DIVISIONS
     for tier in TIERS
