@@ -82,7 +82,7 @@ async def asset_raw_riot_api_league_entries(
                 context,
                 'league_entries_elite',
                 platform=server,
-                tier=tier
+                elite_tier=tier
             )
         else:
             response = await fetch_with_rate_limit(
