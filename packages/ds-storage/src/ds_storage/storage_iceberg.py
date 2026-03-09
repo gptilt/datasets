@@ -94,6 +94,7 @@ class StorageIceberg(Storage):
         attempt = 0
         while attempt < retries:
             try:
+                table.refresh()  # force re-read of current metadata
                 match mode:
                     case 'append':
                         table.append(pyarrow_table)
