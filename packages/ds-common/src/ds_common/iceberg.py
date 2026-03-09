@@ -45,6 +45,7 @@ def convert_polars_df_to_pyarrow_table_using_iceberg_schema(
 ):
     """
     Convert a Polars DataFrame to a PyArrow Table using the provided Iceberg schema.
+    This ensures 'nullable' fields are correctly represented.
     """
     # Shared categorical buffers may cause Arrow segfaults
     pl.disable_string_cache()
