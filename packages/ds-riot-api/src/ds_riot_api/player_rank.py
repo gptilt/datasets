@@ -85,7 +85,7 @@ async def asset_raw_riot_api_league_entries(
                 elite_tier=tier
             )
             entries = response.pop('entries')
-            league_entries = [
+            response = [
                 {**response, **entry}
                 for entry in entries
             ]
