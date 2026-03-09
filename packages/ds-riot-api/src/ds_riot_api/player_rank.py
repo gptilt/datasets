@@ -17,8 +17,8 @@ partition_per_day = dg.DailyPartitionsDefinition(
 )
 partition_per_server_x_tier_x_division = dg.StaticPartitionsDefinition([
     f"{server}_{tier}_{division}"
-    for tier in TIERS
     for division in DIVISIONS
+    for tier in TIERS
     for server in SERVERS
 ] + [
     f"{server}_{elite_tier}_I"
