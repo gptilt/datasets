@@ -4,7 +4,6 @@ from pyiceberg.table.sorting import SortOrder, SortField, SortDirection, NullOrd
 from pyiceberg.transforms import DayTransform, IdentityTransform
 from pyiceberg.types import (
     BooleanType,
-    DateType,
     FloatType,
     IntegerType,
     NestedField,

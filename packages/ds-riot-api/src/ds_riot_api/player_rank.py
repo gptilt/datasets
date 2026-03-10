@@ -1,7 +1,6 @@
-from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema, no_backfills, tqdm_range
+from ds_common import no_backfills, tqdm_range
 from .get import *
 from .constants import DATASET_NAME, SERVERS, TIERS, DIVISIONS, ELITE_TIERS, REGION_PER_SERVER
-from .schemata import SCHEMATA
 import dagster as dg
 from datetime import date
 from ds_storage import StorageS3
@@ -221,24 +220,17 @@ def op_extract_and_process_league_entries(
 )
 def op_upsert_fact_player_rank(context: dg.OpExecutionContext, df: pl.DataFrame):
     catalog_clean = context.resources.catalog_clean
-    table_name = 'fact_player_rank'
-    schema = SCHEMATA[table_name]['schema']
 
-    table = convert_polars_df_to_pyarrow_table_using_iceberg_schema(df, schema)
-
-    catalog_clean.write_table(
-        table_name,
-        pyarrow_table=table,
+    catalog_clean.write_dataframe_to_table(
+        table_name='fact_player_rank',
+        df=df,
         mode='append',
-        schema=schema,
-        partition_spec=SCHEMATA[table_name]['partition_spec'],
-        sort_order=SCHEMATA[table_name]['sort_order'],
     )
 
     return dg.Output(
         value=None, 
         metadata={
-            "player_count": dg.MetadataValue.int(len(table)),
+            "player_count": dg.MetadataValue.int(len(df)),
         }
     )
 
