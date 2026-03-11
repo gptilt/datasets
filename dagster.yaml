@@ -6,4 +6,4 @@ concurrency:
       - key: 'concurrency_group'
         value:
           applyLimitPerUniqueValue: true
-        limit: 2
+        limit: 1

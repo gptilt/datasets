@@ -1,12 +1,21 @@
+from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema
+from functools import reduce
+import polars as pl
 import pyarrow as pa
 from pydantic import PrivateAttr
 from pyiceberg.catalog.rest import RestCatalog
+from pyiceberg.expressions import And, EqualTo, BooleanExpression
 from pyiceberg.partitioning import PartitionSpec
 from pyiceberg.schema import Schema
+from pyiceberg.table import DataScan, Table
 from pyiceberg.table.sorting import SortOrder
 import random
 import time
 from .storage_base import Storage, NonEmptyStr
+
+
+DEFAULT_RETRIES = 5
+DEFAULT_BACKOFF_FACTOR = 2
 
 
 class StorageIceberg(Storage):
@@ -60,8 +69,8 @@ class StorageIceberg(Storage):
         table_name: str,
         schema: Schema = None,
         partition_spec: PartitionSpec = None,
-        sort_order: SortOrder = None
-    ):
+        sort_order: SortOrder = None,
+    ) -> Table:
         full_name = self.full_table_name(table_name)
 
         if not self.catalog.table_exists(full_name):
@@ -75,21 +84,67 @@ class StorageIceberg(Storage):
         return self.catalog.load_table(full_name)
 
 
+    def get_table_schema(self, table_name: str):
+        return self.catalog.load_table(self.full_table_name(table_name)).schema()
+
+
+    def scan_table(
+        self,
+        table_name: str,
+        selected_fields: list[str] = None,
+        row_filter: BooleanExpression = None,
+        **partition_columns: dict[str, str] | None,
+    ) -> DataScan:
+        """
+        Read an Iceberg table and return a DataScan object.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the table to read.
+        selected_fields : list[str], optional
+            List of column names to select. Reads all columns if not specified.
+        row_filter : BooleanExpression, optional
+            Filter expression to apply to the rows.
+        **partition_columns
+            Partition key-value pairs to filter by e.g. server='na1', date='2026-01-01'
+        """
+        table = self.catalog.load_table(self.full_table_name(table_name))
+
+        scan_kwargs = {}
+        filters = []
+
+        if selected_fields:
+            scan_kwargs['selected_fields'] = tuple(selected_fields)
+
+        if row_filter is not None:
+            filters.append(row_filter)
+
+        if partition_columns:
+            filters.extend([
+                EqualTo(k, v)
+                for k, v in partition_columns.items()
+                if v is not None
+            ])
+
+        if filters:
+            scan_kwargs['row_filter'] = reduce(And, filters)
+
+        return table.scan(**scan_kwargs)
+
+
     def write_table(
         self,
         table_name: str,
         pyarrow_table: pa.Table,
         mode: str = 'append',
-        schema: Schema = None,
-        partition_spec: PartitionSpec = None,
-        sort_order: SortOrder = None,
-        retries: int = 3,
-        backoff_factor: int = 2,
+        retries: int = DEFAULT_RETRIES,
+        backoff_factor: int = DEFAULT_BACKOFF_FACTOR,
     ):
         """
         Attempt to write a PyArrow table to Iceberg, retrying on failure.
         """
-        table = self.create_table_if_not_exists(table_name, schema, partition_spec, sort_order)
+        table = self.catalog.load_table(self.full_table_name(table_name))
 
         attempt = 0
         while attempt < retries:
@@ -112,19 +167,42 @@ class StorageIceberg(Storage):
         raise RuntimeError(f"Failed to write to '{table_name}' with mode '{mode}' after {retries} attempts")
 
 
-    def upsert_records(
+    def write_dataframe_to_table(
+        self,
+        table_name: str,
+        df: pl.DataFrame,
+        mode: str = 'append',
+        retries: int = DEFAULT_RETRIES,
+        backoff_factor: int = DEFAULT_BACKOFF_FACTOR,
+    ):
+        """
+        Load a Polars DataFrame into an Iceberg table.
+        """
+        schema = self.get_table_schema(table_name)
+
+        self.write_table(
+            table_name,
+            convert_polars_df_to_pyarrow_table_using_iceberg_schema(df, schema),
+            mode=mode,
+            retries=retries,
+            backoff_factor=backoff_factor
+        )
+
+
+    def write_records_to_table(
         self,
         table_name: str,
         list_of_records: list[dict],
-        schema: Schema = None,
-        partition_spec: PartitionSpec = None,
-        sort_order: SortOrder = None
+        mode: str = 'upsert',
+        retries: int = DEFAULT_RETRIES,
+        backoff_factor: int = DEFAULT_BACKOFF_FACTOR
     ):
-        self.upsert_table(
+        schema = self.get_table_schema(table_name)
+
+        self.write_table(
             table_name,
             pa.Table.from_pylist(list_of_records, schema=schema.as_arrow()),
-            schema=schema,
-            partition_spec=partition_spec,
-            sort_order=sort_order
+            mode=mode,
+            retries=retries,
+            backoff_factor=backoff_factor,
         )
-    

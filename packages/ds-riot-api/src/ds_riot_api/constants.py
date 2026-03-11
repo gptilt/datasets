@@ -36,9 +36,17 @@ TIERS = [
     "EMERALD",
     "DIAMOND"
 ]
-DIVISIONS = ["I", "II", "III", "IV"]
 ELITE_TIERS = [
     "MASTER",
     "GRANDMASTER",
     "CHALLENGER"
+]
+DIVISIONS = ["I", "II", "III", "IV"]
+TIERS_AND_DIVISIONS = [
+    (tier, division)
+    for tier in TIERS
+    for division in DIVISIONS
+] + [
+    (tier, "I")
+    for tier in ELITE_TIERS
 ]
