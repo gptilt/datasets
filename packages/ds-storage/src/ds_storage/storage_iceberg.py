@@ -1,11 +1,13 @@
 from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema
+from functools import reduce
 import polars as pl
 import pyarrow as pa
 from pydantic import PrivateAttr
 from pyiceberg.catalog.rest import RestCatalog
+from pyiceberg.expressions import And, EqualTo, BooleanExpression
 from pyiceberg.partitioning import PartitionSpec
 from pyiceberg.schema import Schema
-from pyiceberg.table import Table
+from pyiceberg.table import DataScan, Table
 from pyiceberg.table.sorting import SortOrder
 import random
 import time
@@ -83,7 +85,52 @@ class StorageIceberg(Storage):
 
 
     def get_table_schema(self, table_name: str):
-        return self.catalog.load_table(self.full_table_name(table_name)).schema
+        return self.catalog.load_table(self.full_table_name(table_name)).schema()
+
+
+    def scan_table(
+        self,
+        table_name: str,
+        selected_fields: list[str] = None,
+        row_filter: BooleanExpression = None,
+        **partition_columns: dict[str, str] | None,
+    ) -> DataScan:
+        """
+        Read an Iceberg table and return a DataScan object.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the table to read.
+        selected_fields : list[str], optional
+            List of column names to select. Reads all columns if not specified.
+        row_filter : BooleanExpression, optional
+            Filter expression to apply to the rows.
+        **partition_columns
+            Partition key-value pairs to filter by e.g. server='na1', date='2026-01-01'
+        """
+        table = self.catalog.load_table(self.full_table_name(table_name))
+
+        scan_kwargs = {}
+        filters = []
+
+        if selected_fields:
+            scan_kwargs['selected_fields'] = tuple(selected_fields)
+
+        if row_filter is not None:
+            filters.append(row_filter)
+
+        if partition_columns:
+            filters.extend([
+                EqualTo(k, v)
+                for k, v in partition_columns.items()
+                if v is not None
+            ])
+
+        if filters:
+            scan_kwargs['row_filter'] = reduce(And, filters)
+
+        return table.scan(**scan_kwargs)
 
 
     def write_table(

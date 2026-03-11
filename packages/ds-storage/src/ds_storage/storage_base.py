@@ -7,6 +7,10 @@ from typing import Annotated
 NonEmptyStr = Annotated[str, Field(min_length=1, strip_whitespace=True)]
 
 
+class RecordNotFoundError(FileNotFoundError):
+    pass
+
+
 class TableNotFoundError(FileNotFoundError):
     pass
 
