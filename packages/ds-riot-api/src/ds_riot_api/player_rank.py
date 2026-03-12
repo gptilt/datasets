@@ -360,8 +360,8 @@ riot_job_config = dg.PartitionedConfig(
 job_riot_api_player_rank = dg.define_asset_job(
     name="job_riot_api_player_rank",
     selection=[
-        asset_raw_riot_api_league_entries,
-        asset_clean_riot_api_player_rank
+        asset_raw_riot_api_league_entries
+        # asset_clean_riot_api_player_rank
     ],
     config=riot_job_config, # <-- Now the job knows how to tag itself!
 )
