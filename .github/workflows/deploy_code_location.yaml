@@ -47,6 +47,8 @@ jobs:
         with:
           app-id: ${{ secrets.GPTILT_READONLY_ACCESS_APP_ID }}
           private-key: ${{ secrets.GPTILT_READONLY_ACCESS_APP_PRIVATE_KEY }}
+          # Adding 'owner' is required to make the token org-wide
+          owner: ${{ github.repository_owner }}
 
       # Checkout the project
       - name: Checkout
