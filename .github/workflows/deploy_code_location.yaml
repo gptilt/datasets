@@ -46,6 +46,8 @@ jobs:
         if: steps.prerun.outputs.result != 'skip'
         with:
           ref: ${{ github.head_ref }}
+          submodules: recursive
+          token: ${{ secrets.GITHUB_SUBMODULE_TOKEN }}
 
       # Update Dagster deployment settings
       - name: Update Dagster deployment settings
