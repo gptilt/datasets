@@ -39,7 +39,7 @@ dagster dev
 
 Most pipelines require a number of secrets that should be available at runtime as environment variables. If you include them in a `.env` file in the repository root, Dagster will automatically load them before executing the pipelines.
 
-> ⚠️ Not all pipelines are public.
+> ⚠️ Not all pipelines are public, but the repository utilities (e.g. `make init`) take that into account - so everything should work fine!.
 
 ## Contributing
 
