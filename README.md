@@ -4,9 +4,18 @@ Open datasets for the community!
 
 Normalized, curated and enriched, these datasets were *specifically* designed for data science workloads.
 
-You can find the published datasets in [GPTilt's Hugging Face profile](https://huggingface.co/gptilt). All datasets are published in parquet format.
+You can find the published datasets in [GPTilt's Hugging Face profile](https://huggingface.co/gptilt). All datasets are published in parquet format, or available as Apache Iceberg tables.
 
 Alternatively, if you are interested in running the data pipelines yourself, find instructions [below](#getting-started).
+
+## The GPTilt Dataset Catalogue
+
+> If you're looking for the previous dataset tiering, please refer to the [relevant doc](./docs/old_dataset_tiering.md).
+
+The **GPTilt Dataset Catalogue** splits datasets into two tiers:
+
+- **Clean:** these datasets are true to the raw data, with some additional transformations that improve coherence (usage of `matchId` instead of `gameId`), increase usability (e.g. the addition of inventory data), reduce the scope (fields that aren't particularly relevant are removed), and denormalize (e.g. splitting kill events into kill and assist events) the underlying data.
+- **Curated:** these datasets, on the other hand, perform opinionated transformations, with some specific goal in mind. Data accuracy remains, but the dataset structure is markedly different. It can be aggregated at a different level of granularity, have additional columns based on complex rules, or one-hot encodings.
 
 ## Naming Convention
 
@@ -15,39 +24,6 @@ Alternatively, if you are interested in running the data pipelines yourself, fin
 3. The `dataset` is the highest logical aggregator - typically the platform from which the data was originally collected (e.g. `riot_api`, `youtube`).
 4. The `schema` specifies the degree of quality of the data (e.g. `raw`, `clean`, `curated`).
 5. The `table` specifies a relation (e.g. `league_entries`, which contains data collected from the Riot API on player entries in a league).
-
-## Basic
-
-Datasets are split into two tiers:
-
-- `basic`: Basic datasets are true to the raw data, with some additional transformations that improve coherence (usage of `matchId` instead of `gameId`), increase usability (e.g. the addition of inventory data to the `events` table in the `matches` dataset), reduce the scope (fields that aren't particularly relevant are removed), and denormalize (e.g. splitting kill events into kill and assist events) the underlying data.
-- `ultimate`: Ultimate datasets, on the other hand, perform opinionated transformations, with some specific goal in mind. Data accuracy remains, but the dataset structure is markedly different.
-
-### Matches
-
-The match dataset contains all data available in the Riot API for a given set of matches.
-Currently, the dataset can be found in the following variants:
-
-- [`10k` Challenger matches](https://huggingface.co/datasets/gptilt/lol-basic-matches-challenger-10k), includes over 15M events from ranked matches with at least one challenger player. The 10 largest regions are included.
-- *SOON* `100k` Challenger matches, includes over 150M events.
-
-## Ultimate
-
-### Events
-
-The `ultimate` tier `events` dataset contains enriched events from a selection of matches from the Riot Games API. This dataset was specifically designed for time series analysis, with all events being timestamped and providing improved (compared to the `basic` tier `events` dataset) contextual information about every event.
-
-Currently, the dataset can be found in the following variants:
-
-- [Over `10M` events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-events-challenger-10m), includes over 10M events from ranked matches with at least one challenger player. Events are enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels). The 10 largest regions are included.
-
-### Snapshot
-
-The `ultimate` tier `snapshot` dataset contains snapshots from a selection of matches from the Riot Games API. This dataset was specifically designed for isolated estimation/classification, namely win probability estimation, with all the relevant game state information included.
-
-Currently, the dataset can be found in the following variants:
-
-- [Snapshots at 15 minutes events from `10K` Challenger matches](https://huggingface.co/datasets/gptilt/lol-ultimate-snapshot-challenger-15min). Events were enriched with pregame context (player champions), and up-to-date game state context (inventories, corrected levels), then a snapshot at 15 minutes was taken. The 10 largest regions are included.
 
 ## Getting Started
 
