@@ -27,50 +27,19 @@ The **GPTilt Dataset Catalogue** splits datasets into two tiers:
 
 ## Getting Started
 
-If you'd rather do things yourself, you must clone the repository, open a terminal inside the newly created directory, create and activate a Python virtual environment, and run `pip install .` inside the cloned repository.
+If you'd rather do things yourself, the easiest way to go about it is to clone the repository, open a terminal inside the newly created directory, and run `make init`. This will create the Python virtual environment and install the project dependencies. You can then activate the virtual environment with `source venv/bin/activate` if you're in a Linux environment, or `source venv/Scripts/activate` if you're in a Windows environment.
 
-Then, you'll be able to use the CLI.
+Then, you'll be able to use the Dagster CLI to boot the orchestrator up:
 
-### `ds-cdragon`
-
-Gets data from the [CommunityDragon](https://communitydragon.org/) CDN, namely, coordinates for all structures and jungle camps.
-
-### `ds-riot-api`
-
-Requires the parameters `--key` and `--root`, that specify the Riot API Key, and the storage root directory, respectively.
-
-Example usage:
-
-```bash
-ds-riot-api \
-  --root $DATASET_ROOT \
-  --key $RIOT_API_KEY
+```sh
+dagster dev
 ```
 
-If no production key is available, the entire ETL process for building the datasets is network bound. The code is not particularly optimized for performance, because the limiting factor is the API rate limits.
+> The ingestion, processing, and curation of the GPTilt Dataset Catalogue is orchestrated with [Dagster](https://dagster.io). We highly recommend you get acquainted with Dagster before moving forward.
 
-A thread is spawned per platform, to ensure asyncio tasks from different platforms are managed independently, because rate limits are applied on a per-region basis.
-From each thread, every API call is ran as a coroutine.
+Most pipelines require a number of secrets that should be available at runtime as environment variables. If you include them in a `.env` file in the repository root, Dagster will automatically load them before executing the pipelines.
 
-### `ds-tables`
-
-Runs ETL pipelines for the specified table. Requires specifying a schema first (e.g. `basic`). Admits the flag option `--flush`, which forces it to write to disk even if a table's partition is smaller than 1GB.
-
-Example usage:
-
-```bash
-ds-tables basic matches \
-  --root $DATASET_ROOT \
-  --flush --count 10000
-```
-
-### Useful Commands
-
-#### Count number of ranked matches in raw
-
-```bash
-grep -rnw "${DATASET_ROOT}/raw/riot_api/match_info" -e 'queueId": 420' | wc -l
-```
+> ⚠️ Not all pipelines are public.
 
 ## Contributing
 

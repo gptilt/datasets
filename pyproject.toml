@@ -19,9 +19,11 @@ dependencies = [
     "ds-hugging-face",
     "ds-riot-api",
     "ds-storage",
-    "ds-tables",
-    "ds-youtube"
+    "ds-tables"
 ]
+
+[project.optional-dependencies]
+private = ["ds-chatbot"]
 
 [dependency-groups]
 dev = [

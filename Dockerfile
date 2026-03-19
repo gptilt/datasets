@@ -17,7 +17,7 @@ COPY src/ ./src/
 # --frozen ensures uv.lock is respected
 # --no-cache keeps the image lean
 # --no-editable guarantees no symlinks are used (true production artifact)
-RUN uv sync --no-dev --group cloud --frozen --no-cache --no-editable
+RUN uv sync --no-dev --extra private --group cloud --frozen --no-cache --no-editable
 
 # Add the venv's bin to PATH so dagster is found
 ENV PATH="/opt/dagster/app/.venv/bin:$PATH"
