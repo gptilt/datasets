@@ -27,6 +27,16 @@ env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository }}
   IMAGE_TAG: ${{ github.sha }}
 jobs:
+
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_MANAGER_ROLE_ARN }}  # output from your Terraform
+          aws-region: eu-west-1
+
+      - name: Run pyiceberg schema management
+        run: python manage_schema.py
+
   dagster-cloud-deploy:
     runs-on: ubuntu-22.04
     environment: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
