@@ -1,3 +1,3 @@
 [submodule "packages/ds-chatbot"]
 	path = packages/ds-chatbot
-	url = git@github.com:gptilt/ds-chatbot.git
+	url = https://github.com/gptilt/ds-chatbot.git
