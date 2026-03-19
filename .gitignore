@@ -1,10 +1,13 @@
-.env
-*.egg-info
-__pycache__
-.pytest_cache
+# Temporary Outputs
 output
 tmp
 .tmp*
 *.duckdb
+
+# Common
+.env
+*.egg-info
+__pycache__
+.pytest_cache
 venv
 .venv

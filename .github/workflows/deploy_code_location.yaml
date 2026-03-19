@@ -51,11 +51,23 @@ jobs:
       - name: Update Dagster deployment settings
         if: steps.prerun.outputs.result != 'skip'
         run: |
-          curl -X POST \
-            -H "Authorization: Bearer ${{ env.DAGSTER_CLOUD_API_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            https://${{ env.DAGSTER_CLOUD_ORGANIZATION }}.dagster.cloud/prod/graphql \
-            -d @dagster_deployment_settings.graphql.json
+          SETTINGS=$(cat dagster_deployment_settings.json)
+          jq -n \
+            --argjson settings "$SETTINGS" \
+            --arg token "${{ secrets.GHCR_PULL_TOKEN }}" \
+            '{
+              query: "mutation UpdateDeploymentSettings($deploymentSettings: DeploymentSettingsInput!) { updateDeploymentSettings(deploymentSettings: $deploymentSettings) { ... on DeploymentSettings { settings } } }",
+              variables: {
+                deploymentSettings: {
+                  settings: $settings
+                }
+              }
+            }' \
+          | curl -X POST \
+              -H "Authorization: Bearer ${{ env.DAGSTER_CLOUD_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              https://${{ env.DAGSTER_CLOUD_ORGANIZATION }}.dagster.cloud/prod/graphql \
+              -d @-
 
       # Validate dagster_cloud.yaml and the connection to dagster.cloud
       - name: Validate configuration

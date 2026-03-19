@@ -12,6 +12,7 @@ dependencies = [
     "polars>=1.28",
     "pyarrow==18.1",
     "pyiceberg[pyiceberg-core]>=0.10",
+    "PyJWT>=2.12.0",
     "requests>=2.31.0",
     # GPTilt Datasets Packages
     "ds-cdragon",
@@ -19,9 +20,11 @@ dependencies = [
     "ds-hugging-face",
     "ds-riot-api",
     "ds-storage",
-    "ds-tables",
-    "ds-youtube"
+    "ds-tables"
 ]
+
+[project.optional-dependencies]
+private = ["ds-chatbot"]
 
 [dependency-groups]
 dev = [
@@ -42,7 +45,8 @@ ds-hugging-face = {workspace = true }
 ds-riot-api = {workspace = true }
 ds-storage = {workspace = true }
 ds-tables = {workspace = true }
-ds-youtube = {workspace = true }
+# Private Modules
+ds-chatbot = {workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/orchestration"]

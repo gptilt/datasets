@@ -215,6 +215,7 @@ async def asset_raw_riot_api_league_entries(
     name="clean_riot_api_player_rank",
     group_name=DATASET_NAME,
     partitions_def=partition_per_day_per_server,
+    tags={"concurrency_group": "catalog_clean"}
 )
 def asset_clean_riot_api_player_rank(
     context: dg.AssetExecutionContext,
@@ -357,17 +358,24 @@ riot_job_config = dg.PartitionedConfig(
 )
 
 # Attach the config to the job
-job_riot_api_player_rank = dg.define_asset_job(
-    name="job_riot_api_player_rank",
+job_raw_riot_api_league_entries = dg.define_asset_job(
+    name="job_raw_riot_api_league_entries",
     selection=[
         asset_raw_riot_api_league_entries
-        # asset_clean_riot_api_player_rank
     ],
     config=riot_job_config, # <-- Now the job knows how to tag itself!
 )
+job_clean_riot_api_player_rank = dg.define_asset_job(
+    name="job_clean_riot_api_player_rank",
+    selection=[
+        asset_clean_riot_api_player_rank
+    ],
+)
+
+# The raw job runs automatically every day at midnight
 @dg.schedule(
-    job=job_riot_api_player_rank,
-    cron_schedule="0 0 * * *",  
+    job=job_raw_riot_api_league_entries,
+    cron_schedule="0 0 * * *",
 )
 def schedule_riot_api_player_rank(context):
     today = context.scheduled_execution_time.date()
@@ -382,3 +390,16 @@ def schedule_riot_api_player_rank(context):
         )
         for server in partition_per_server.get_partition_keys()
     ]
+
+# The clean job is triggered when the raw job finishes
+@dg.asset_sensor(
+    asset_key=dg.AssetKey("asset_raw_riot_api_league_entries"),
+    job=job_clean_riot_api_player_rank,
+)
+def league_entries_to_player_rank_sensor(context, asset_event):
+    # Pass the same partition key along to the second job
+    partition_key = asset_event.partition_key
+
+    return dg.RunRequest(
+        partition_key=partition_key,
+    )
