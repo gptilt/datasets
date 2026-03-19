@@ -396,7 +396,7 @@ def schedule_riot_api_player_rank(context):
     asset_key=dg.AssetKey("asset_raw_riot_api_league_entries"),
     job=job_clean_riot_api_player_rank,
 )
-def league_entries_to_player_rank_sensor(context, asset_event):
+def sensor_riot_api_league_entries_to_player_rank(context, asset_event):
     # Pass the same partition key along to the second job
     partition_key = asset_event.partition_key
 
