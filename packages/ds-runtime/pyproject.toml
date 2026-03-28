@@ -1,0 +1,11 @@
+[project]
+name = "ds-runtime"
+version = "0.1.0"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ds_runtime"]

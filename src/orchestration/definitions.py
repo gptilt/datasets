@@ -1,5 +1,5 @@
-from .constants import DEPLOYMENT_NAME
 import dagster as dg
+from ds_runtime import DEPLOYMENT_NAME
 import ds_riot_api, ds_storage
 
 
@@ -28,6 +28,17 @@ resources = {
         access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
         secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
     ),
+    "document_bucket": ds_storage.StorageS3(
+        root=DEPLOYMENT_NAME,
+        dataset='document',
+        schema_name='staging',
+        tables=['transcripts'],
+        file_extension='text',
+        bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
+        bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
+        access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
+        secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
+    ),
     "catalog_clean": ds_storage.StorageIceberg(
         root=DEPLOYMENT_NAME,
         dataset='riot_api',
@@ -36,17 +47,6 @@ resources = {
         warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
         catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
         token=dg.EnvVar("CATALOG_TOKEN"),
-    ),
-    "youtube_bucket": ds_storage.StorageS3(
-        root=DEPLOYMENT_NAME,
-        dataset='youtube',
-        schema_name='raw',
-        tables=['audio'],
-        file_extension='m4a',
-        bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
-        bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
-        access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
-        secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
     )
 }
 
