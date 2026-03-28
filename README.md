@@ -41,6 +41,17 @@ Most pipelines require a number of secrets that should be available at runtime a
 
 > ⚠️ Not all pipelines are public, but the repository utilities (e.g. `make init`) take that into account - so everything should work fine!.
 
+### Modules
+
+- `ds-cdragon`: Script for retrieving data from cdragon, namely camp and building coordinates in Summoner's Rift.
+- `ds-chatbot`: One of the very few private repositories of GPTilt! 🤫
+- `ds-common`: Common utilities for the repository.
+- `ds-hugging-face`: For publishing datasets to [🤗 Hugging Face](https://huggingface.co/gptilt).
+- `ds-riot-api`: For building assets with provenance from the [Riot Games API](https://developer.riotgames.com/apis).
+- `ds-scribe`: For transcribing audio to text.
+- `ds-storage`: Custom storage interface. Maintenance limited to usage.
+- `ds-tables`: TBD.
+
 ## Contributing
 
 Contributions are welcome! If you have ideas for new utilities, find bugs, or want to improve existing code, please feel free to open an issue or submit a pull request on the GitHub repository.
