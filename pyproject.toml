@@ -9,6 +9,7 @@ description = "Datasets for the League of Legends community!"
 requires-python = ">=3.12"
 dependencies = [
     "dagster>=1.11.8",
+    "dorans>=0.2.6",
     "polars>=1.28",
     "pyarrow==18.1",
     "pyiceberg[pyiceberg-core]>=0.10",
@@ -17,7 +18,6 @@ dependencies = [
     "torch>=2.8.0",
     "whisperx>=3.8.4",
     # GPTilt Datasets Packages
-    "ds-cdragon",
     "ds-common",
     "ds-documents",
     "ds-hugging-face",
@@ -44,7 +44,6 @@ cloud = [
 members = ["packages/*"]
 
 [tool.uv.sources]
-ds-cdragon = { workspace = true }
 ds-common = { workspace = true }
 ds-documents = { workspace = true }
 ds-hugging-face = { workspace = true }
