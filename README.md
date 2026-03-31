@@ -43,7 +43,6 @@ Most pipelines require a number of secrets that should be available at runtime a
 
 ### Modules
 
-- `ds-cdragon`: Script for retrieving data from cdragon, namely camp and building coordinates in Summoner's Rift. 🐉
 - `ds-chatbot`: One of the very few private repositories of GPTilt! 🤫
 - `ds-common`: Common utilities for the repository. 🛠️
 - `ds-documents`: For building an enriched document store. 📚
