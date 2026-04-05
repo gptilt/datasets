@@ -32,6 +32,7 @@ jobs:
     environment: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
     permissions:
       contents: read
+      id-token: write  # Required for OIDC auth to AWS
     steps:
       # If this is a closed PR the prerun step closes the branch deployment and returns
       # output.result='skip' which is used to skip other steps in this workflow.
