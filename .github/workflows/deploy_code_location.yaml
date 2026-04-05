@@ -104,6 +104,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # DEBUG
+      - name: Debug OIDC token
+        run: |
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            | jq -r '.value')
+          # Print the claims (middle segment of the JWT)
+          echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | jq .
+      
+      - name: Test STS directly
+        run: |
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            | jq -r '.value')
+          
+          aws sts assume-role-with-web-identity \
+            --role-arn ${{ secrets.AWS_ECR_PUSH_ROLE_ARN }} \
+            --role-session-name debug-session \
+            --web-identity-token "$TOKEN" \
+            --region us-east-1
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.0.0
         with:
