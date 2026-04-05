@@ -4,4 +4,3 @@ locations:
       package_name: orchestration.definitions
     build:
       directory: ./
-      registry: ghcr.io/gptilt/datasets

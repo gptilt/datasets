@@ -41,6 +41,18 @@ Most pipelines require a number of secrets that should be available at runtime a
 
 > ⚠️ Not all pipelines are public, but the repository utilities (e.g. `make init`) take that into account - so everything should work fine!.
 
+### Modules
+
+- `ds-chatbot`: One of the very few private repositories of GPTilt! 🤫
+- `ds-common`: Common utilities for the repository. 🛠️
+- `ds-documents`: For building an enriched document store. 📚
+- `ds-hugging-face`: For publishing datasets to [🤗 Hugging Face](https://huggingface.co/gptilt).
+- `ds-riot-api`: For building assets with provenance from the [Riot Games API](https://developer.riotgames.com/apis). 🌐
+- `ds-runtime`: Runtime variables and environment context. ⏲️
+- `ds-scribe`: For transcribing audio to text. 🖊️
+- `ds-storage`: Custom storage interface. Maintenance limited to usage. 🏭
+- `ds-tables`: TBD.
+
 ## Contributing
 
 Contributions are welcome! If you have ideas for new utilities, find bugs, or want to improve existing code, please feel free to open an issue or submit a pull request on the GitHub repository.

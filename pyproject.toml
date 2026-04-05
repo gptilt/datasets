@@ -9,16 +9,21 @@ description = "Datasets for the League of Legends community!"
 requires-python = ">=3.12"
 dependencies = [
     "dagster>=1.11.8",
+    "dorans>=0.2.6",
     "polars>=1.28",
     "pyarrow==18.1",
     "pyiceberg[pyiceberg-core]>=0.10",
     "PyJWT>=2.12.0",
-    "requests>=2.31.0",
+    "requests>=2.33.0",
+    "torch>=2.8.0",
+    "whisperx>=3.8.4",
     # GPTilt Datasets Packages
-    "ds-cdragon",
     "ds-common",
+    "ds-documents",
     "ds-hugging-face",
     "ds-riot-api",
+    "ds-runtime",
+    "ds-scribe",
     "ds-storage",
     "ds-tables"
 ]
@@ -39,14 +44,16 @@ cloud = [
 members = ["packages/*"]
 
 [tool.uv.sources]
-ds-cdragon = {workspace = true }
-ds-common = {workspace = true }
-ds-hugging-face = {workspace = true }
-ds-riot-api = {workspace = true }
-ds-storage = {workspace = true }
-ds-tables = {workspace = true }
+ds-common = { workspace = true }
+ds-documents = { workspace = true }
+ds-hugging-face = { workspace = true }
+ds-riot-api = { workspace = true }
+ds-runtime = { workspace = true }
+ds-scribe = { workspace = true }
+ds-storage = { workspace = true }
+ds-tables = { workspace = true }
 # Private Modules
-ds-chatbot = {workspace = true }
+ds-chatbot = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/orchestration"]

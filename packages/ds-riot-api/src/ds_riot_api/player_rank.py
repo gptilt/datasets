@@ -1,8 +1,8 @@
 from ds_common import no_backfills, tqdm_range
 from .get import *
-from .constants import DATASET_NAME, SERVERS, TIERS_AND_DIVISIONS, ELITE_TIERS, REGION_PER_SERVER
+from .constants import SERVERS, TIERS_AND_DIVISIONS, ELITE_TIERS, REGION_PER_SERVER
 import dagster as dg
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from ds_storage import StorageS3, StorageIceberg, RecordNotFoundError
 import polars as pl
 from pyiceberg.expressions import And, GreaterThanOrEqual, LessThan
@@ -30,7 +30,7 @@ CLEAN_TABLE_NAME = "fact_player_rank"
 
 def parse_partition(context):
     keys = context.partition_key.keys_by_dimension
-    day = date.fromisoformat(keys["day"])
+    day = context.partition_time_window.start.date()
     server = keys["server"]
     return day, server
 
@@ -101,7 +101,7 @@ async def fetch_league_entries(
 
 @dg.asset(
     name="raw_riot_api_league_entries",
-    group_name=DATASET_NAME,
+    group_name='riot_api',
     partitions_def=partition_per_day_per_server,
 )
 @no_backfills
@@ -213,7 +213,7 @@ async def asset_raw_riot_api_league_entries(
 @dg.asset(
     deps=['raw_riot_api_league_entries'],
     name="clean_riot_api_player_rank",
-    group_name=DATASET_NAME,
+    group_name='riot_api',
     partitions_def=partition_per_day_per_server,
     tags={"concurrency_group": "catalog_clean"}
 )
