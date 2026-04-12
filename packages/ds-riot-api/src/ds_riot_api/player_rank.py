@@ -375,7 +375,7 @@ job_clean_riot_api_player_rank = dg.define_asset_job(
 # The raw job runs automatically every day at midnight
 @dg.schedule(
     job=job_raw_riot_api_league_entries,
-    cron_schedule="0 0 * * *",
+    cron_schedule="0 1 * * *",
 )
 def schedule_riot_api_player_rank(context):
     today = context.scheduled_execution_time.date()
