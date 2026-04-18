@@ -8,7 +8,7 @@ version = "0.0.1"
 description = "Datasets for the League of Legends community!"
 requires-python = ">=3.12"
 dependencies = [
-    "dagster>=1.11.8",
+    "dagster>=1.13.1",
     "dorans>=0.2.6",
     "polars>=1.28",
     "pyarrow==18.1",
@@ -33,11 +33,11 @@ private = ["ds-chatbot"]
 
 [dependency-groups]
 dev = [
-    "dagster-webserver>=1.11.8",
-    "dagster-dg-cli>=1.11.8",
+    "dagster-webserver>=1.13.1",
+    "dagster-dg-cli>=1.13.1",
 ]
 cloud = [
-    "dagster-cloud>=1.11.8",
+    "dagster-cloud>=1.13.1",
 ]
 
 [tool.uv.workspace]
