@@ -37,7 +37,18 @@ dagster dev
 
 > The ingestion, processing, and curation of the GPTilt Dataset Catalogue is orchestrated with [Dagster](https://dagster.io). We highly recommend you get acquainted with Dagster before moving forward.
 
-Most pipelines require a number of secrets that should be available at runtime as environment variables. If you include them in a `.env` file in the repository root, Dagster will automatically load them before executing the pipelines.
+Most pipelines require a number of secrets that should be available at runtime as environment variables. If you include them in a `.env` file in the repository root, Dagster will automatically load them before executing the pipelines. They are:
+
+- `HF_TOKEN`: a Hugging Face token with the following permissions:
+  - `Read access to contents of all public gated repos you can access`;
+- `RIOT_API_KEY`: a Riot Games API key - any kind should work;
+- `S3_BUCKET_NAME`: the name of the S3-compatible bucket;
+- `S3_BUCKET_ENDPOINT`: the name of the S3-compatible bucket;
+- `S3_BUCKET_ACCESS_KEY_ID`: the name of the S3-compatible bucket;
+- `S3_BUCKET_SECRET_ACCESS_KEY`: the name of the S3-compatible bucket;
+- `CATALOG_ENDPOINT`: the endpoint of the Iceberg catalog;
+- `CATALOG_WAREHOUSE_NAME`: the warehouse name of the Iceberg catalog;
+- `CATALOG_TOKEN`: the token for accessing the Iceberg catalog.
 
 > ⚠️ Not all pipelines are public, but the repository utilities (e.g. `make init`) take that into account - so everything should work fine!.
 
