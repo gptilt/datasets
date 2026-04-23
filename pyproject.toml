@@ -6,8 +6,9 @@ build-backend = "hatchling.build"
 name = "gptilt-datasets"
 version = "0.0.1"
 description = "Datasets for the League of Legends community!"
-requires-python = ">=3.12"
+requires-python = "==3.12.*"
 dependencies = [
+    "accelerate>=1.13.0",
     "dagster>=1.13.1",
     "dorans>=0.2.6",
     "polars>=1.28",
@@ -16,6 +17,7 @@ dependencies = [
     "PyJWT>=2.12.0",
     "requests>=2.33.0",
     "torch>=2.8.0",
+    "transformers<5.0.0",
     "whisperx>=3.8.4",
     # Security patches
     "aiohttp>=3.13.4",
@@ -27,6 +29,7 @@ dependencies = [
     "ds-common",
     "ds-documents",
     "ds-hugging-face",
+    "ds-models",
     "ds-riot-api",
     "ds-runtime",
     "ds-scribe",
@@ -53,6 +56,7 @@ members = ["packages/*"]
 ds-common = { workspace = true }
 ds-documents = { workspace = true }
 ds-hugging-face = { workspace = true }
+ds-models = { workspace = true }
 ds-riot-api = { workspace = true }
 ds-runtime = { workspace = true }
 ds-scribe = { workspace = true }

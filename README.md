@@ -39,7 +39,7 @@ dagster dev
 
 Most pipelines require a number of secrets that should be available at runtime as environment variables. If you include them in a `.env` file in the repository root, Dagster will automatically load them before executing the pipelines. They are:
 
-- `HF_TOKEN`: a Hugging Face token with the following permissions:
+- `HUGGING_FACE_TOKEN`: a Hugging Face token with the following permissions:
   - `Read access to contents of all public gated repos you can access`;
 - `RIOT_API_KEY`: a Riot Games API key - any kind should work;
 - `S3_BUCKET_NAME`: the name of the S3-compatible bucket;
