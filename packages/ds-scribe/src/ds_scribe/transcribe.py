@@ -1,6 +1,8 @@
 from dataclasses import replace
 from dagster import ConfigurableResource
+import gc
 from pydantic import PrivateAttr
+import torch
 from typing import Literal
 import whisperx
 from whisperx.diarize import DiarizationPipeline
@@ -42,7 +44,7 @@ class Scribe(ConfigurableResource):
     hugging_face_token: str
     device: str = "cuda"
     compute_type: Literal["int8", "float16"] = "float16"
-    batch_size: int = 4
+    batch_size: int = 1
     models_directory: str | None = None
 
     _asr: object = PrivateAttr(default=None)
@@ -112,4 +114,12 @@ class Scribe(ConfigurableResource):
                 device=self.device,
             )
 
-        return whisperx.assign_word_speakers(self._diarize(audio), aligned)
+        result = whisperx.assign_word_speakers(self._diarize(audio), aligned)
+
+        # Cleanup
+        del audio, transcription_result, aligned
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        # Return the final result
+        return result
