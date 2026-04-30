@@ -233,14 +233,22 @@ class StorageS3(StorageFile):
         data: pl.DataFrame | list[dict],
         table_name: str,
         object_name: str,
+        file_extension: str = None,
         **partition_columns: dict[str, str] | None
     ):
-        object_key = str(self.object_path(table_name, object_name, **partition_columns))
+        file_extension = file_extension or self.file_extension
+        
+        object_key = str(self.object_path(
+            table_name=table_name,
+            object_name=object_name,
+            file_extension=file_extension,
+            **partition_columns
+        ))
 
-        match self.file_extension:
+        match file_extension:
             case 'json':
                 assert isinstance(data, list), "Data must be a list of records for JSON uploads"
-                
+
                 self.client.put_object(
                     Bucket=self.bucket_name,
                     Key=object_key,
@@ -261,4 +269,4 @@ class StorageS3(StorageFile):
                     ContentType='application/octet-stream'
                 )
             case _:
-                raise ValueError(f"Uploads aren't supported for file extension: '{self.file_extension}'")
+                raise ValueError(f"Uploads aren't supported for file extension: '{file_extension}'")
