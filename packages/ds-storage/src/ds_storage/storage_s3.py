@@ -1,6 +1,7 @@
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+import duckdb
 import fnmatch
 import io
 import json
@@ -8,15 +9,15 @@ import os
 from pathlib import Path
 import polars as pl
 from pydantic import PrivateAttr
-from .storage_base import NonEmptyStr, RecordNotFoundError
-from .storage_file import StorageFile
+from .storage_base import NonEmptyStr, RecordNotFoundError, Storage
 
 
-class StorageS3(StorageFile):
+class StorageS3(Storage):
     bucket_endpoint: NonEmptyStr
     bucket_name: NonEmptyStr
     access_key_id: NonEmptyStr
     secret_access_key: NonEmptyStr
+    file_extension: str = 'json'
 
     # Declare a private attribute that Pydantic/Dagster ignores during serialization
     _client: object = PrivateAttr(default=None)
@@ -227,7 +228,53 @@ class StorageS3(StorageFile):
                 **partition_columns
             ))
         )
-    
+
+    def s3_uri(
+        self,
+        table_name: str | None = None,
+        object_name: str | None = None,
+        file_extension: str | None = None,
+        **partition_columns: dict[str, str] | None
+    ) -> str:
+        """
+        Build an `s3://bucket/...` URI for use in DuckDB / external queries.
+
+        - With no args, returns the bucket root.
+        - With `table_name`, returns the table or partition prefix.
+        - With `object_name`, returns the fully qualified object URI.
+        """
+        if table_name is None:
+            return f"s3://{self.bucket_name}"
+
+        if object_name is None:
+            base = self.partition_path(table_name, **partition_columns)
+            return f"s3://{self.bucket_name}/{base}"
+
+        return f"s3://{self.bucket_name}/{self.object_path(table_name, object_name, file_extension, **partition_columns)}"
+
+    def connect(self) -> duckdb.DuckDBPyConnection:
+        """
+        Returns a DuckDB connection pre-configured with httpfs and S3 credentials
+        sourced from this resource. Use `self.s3_uri(...)` to build paths and
+        query with `read_parquet` / `read_json` / `glob`.
+        """
+        con = duckdb.connect()
+        con.execute("INSTALL httpfs; LOAD httpfs;")
+        endpoint = self.bucket_endpoint.removeprefix('https://').removeprefix('http://')
+        con.execute(
+            f"""
+            CREATE OR REPLACE SECRET (
+                TYPE s3,
+                KEY_ID '{self.access_key_id}',
+                SECRET '{self.secret_access_key}',
+                ENDPOINT '{endpoint}',
+                URL_STYLE 'path',
+                REGION 'auto'
+            )
+            """
+        )
+        return con
+
     def upload(
         self,
         data: pl.DataFrame | list[dict],

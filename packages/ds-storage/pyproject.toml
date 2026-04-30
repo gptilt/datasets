@@ -3,6 +3,7 @@ name = "ds-storage"
 version = "0.1.0"
 dependencies = [
     "boto3>=1.40.32",
+    "duckdb",
     "polars",
     "pyarrow",
     "pyiceberg[pyiceberg-core]",

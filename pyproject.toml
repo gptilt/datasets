@@ -11,6 +11,8 @@ dependencies = [
     "accelerate>=1.13.0",
     "dagster>=1.13.1",
     "dorans>=0.2.6",
+    "duckdb>=1.1",
+    "lightning",
     "polars>=1.28",
     "pyarrow==18.1",
     "pyiceberg[pyiceberg-core]>=0.10",
@@ -50,10 +52,15 @@ cloud = [
     "dagster-cloud>=1.13.1",
 ]
 
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
+
 [tool.uv.workspace]
 members = ["packages/*"]
 
 [tool.uv.sources]
+# `lightning` is quarantined on PyPI (Nov 2025); pin to upstream-published wheel.
+lightning = { url = "https://github.com/Lightning-AI/pytorch-lightning/releases/download/2.6.1/lightning-2.6.1-py3-none-any.whl" }
 ds-common = { workspace = true }
 ds-documents = { workspace = true }
 ds-hugging-face = { workspace = true }

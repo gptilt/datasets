@@ -31,7 +31,7 @@ resources = {
     "document_bucket": ds_storage.StorageS3(
         root=DEPLOYMENT_NAME,
         dataset='document',
-        schema_name='staging',
+        schema_name='stg',
         tables=['transcripts'],
         file_extension='parquet',
         bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
