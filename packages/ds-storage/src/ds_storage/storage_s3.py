@@ -282,9 +282,20 @@ class StorageS3(Storage):
         object_name: str,
         file_extension: str = None,
         **partition_columns: dict[str, str] | None
-    ):
+    ) -> bool:
+        """
+        Upload `data` to S3. Returns True on write, False on no-op.
+
+        No-op on empty input: an empty list serializes to `[]` (pointless), and an empty
+        Polars DataFrame writes a zero-column "root only" parquet that DuckDB and most
+        readers reject as malformed. Either way, callers shouldn't have to know — we
+        silently skip the write so glob-based readers don't trip over corpse blobs.
+        """
         file_extension = file_extension or self.file_extension
-        
+
+        if len(data) == 0:
+            return False
+
         object_key = str(self.object_path(
             table_name=table_name,
             object_name=object_name,
@@ -317,3 +328,5 @@ class StorageS3(Storage):
                 )
             case _:
                 raise ValueError(f"Uploads aren't supported for file extension: '{file_extension}'")
+
+        return True
