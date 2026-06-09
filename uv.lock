@@ -13,6 +13,7 @@ members = [
     "ds-chatbot",
     "ds-common",
     "ds-documents",
+    "ds-esports",
     "ds-hugging-face",
     "ds-models",
     "ds-riot-api",
@@ -689,6 +690,29 @@ version = "0.1.0"
 source = { editable = "packages/ds-documents" }
 
 [[package]]
+name = "ds-esports"
+version = "0.1.0"
+source = { editable = "packages/ds-esports" }
+dependencies = [
+    { name = "ds-common", marker = "sys_platform == 'linux'" },
+    { name = "ds-storage", marker = "sys_platform == 'linux'" },
+    { name = "polars", marker = "sys_platform == 'linux'" },
+    { name = "pyarrow", marker = "sys_platform == 'linux'" },
+    { name = "pyiceberg", marker = "sys_platform == 'linux'" },
+    { name = "requests", marker = "sys_platform == 'linux'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ds-common", editable = "packages/ds-common" },
+    { name = "ds-storage", editable = "packages/ds-storage" },
+    { name = "polars" },
+    { name = "pyarrow" },
+    { name = "pyiceberg" },
+    { name = "requests" },
+]
+
+[[package]]
 name = "ds-hugging-face"
 version = "0.1.0"
 source = { editable = "packages/ds-hugging-face" }
@@ -932,6 +956,7 @@ dependencies = [
     { name = "dorans", marker = "sys_platform == 'linux'" },
     { name = "ds-common", marker = "sys_platform == 'linux'" },
     { name = "ds-documents", marker = "sys_platform == 'linux'" },
+    { name = "ds-esports", marker = "sys_platform == 'linux'" },
     { name = "ds-hugging-face", marker = "sys_platform == 'linux'" },
     { name = "ds-models", marker = "sys_platform == 'linux'" },
     { name = "ds-riot-api", marker = "sys_platform == 'linux'" },
@@ -950,6 +975,7 @@ dependencies = [
     { name = "pyjwt", marker = "sys_platform == 'linux'" },
     { name = "requests", marker = "sys_platform == 'linux'" },
     { name = "torch", marker = "sys_platform == 'linux'" },
+    { name = "torchcodec", marker = "sys_platform == 'linux'" },
     { name = "transformers", marker = "sys_platform == 'linux'" },
     { name = "whisperx", marker = "sys_platform == 'linux'" },
     { name = "yt-dlp", marker = "sys_platform == 'linux'" },
@@ -979,6 +1005,7 @@ requires-dist = [
     { name = "ds-chatbot", marker = "extra == 'private'", editable = "packages/ds-chatbot" },
     { name = "ds-common", editable = "packages/ds-common" },
     { name = "ds-documents", editable = "packages/ds-documents" },
+    { name = "ds-esports", editable = "packages/ds-esports" },
     { name = "ds-hugging-face", editable = "packages/ds-hugging-face" },
     { name = "ds-models", editable = "packages/ds-models" },
     { name = "ds-riot-api", editable = "packages/ds-riot-api" },
@@ -996,7 +1023,8 @@ requires-dist = [
     { name = "pyiceberg", extras = ["pyiceberg-core"], specifier = ">=0.10" },
     { name = "pyjwt", specifier = ">=2.12.0" },
     { name = "requests", specifier = ">=2.33.0" },
-    { name = "torch", specifier = ">=2.8.0" },
+    { name = "torch", specifier = ">=2.8.0,<2.9" },
+    { name = "torchcodec", specifier = ">=0.6,<0.8" },
     { name = "transformers", specifier = "<5.0.0" },
     { name = "whisperx", specifier = ">=3.8.4" },
     { name = "yt-dlp", specifier = ">=2026.2.4" },
@@ -2686,11 +2714,10 @@ wheels = [
 
 [[package]]
 name = "torchcodec"
-version = "0.11.0"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/4c/b466aa762abf2e771cfd865bac1c03259a66c482b83978898c00810cb97f/torchcodec-0.11.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:aca62724bf7d4b5b70db60183e8bee67ba77f4f0afdb052e6d1900528b97de6e", size = 2397523, upload-time = "2026-03-24T15:56:25.026Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/01/2488f553e8014c911652c2bf29265b73ec3753ac13ac4816b9c831ad27e2/torchcodec-0.11.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:669895505b7f0cd17bd6a71cf8bfa85190a9de1dc87f77051682c73149d58023", size = 2545573, upload-time = "2026-03-24T15:56:26.765Z" },
+    { url = "https://files.pythonhosted.org/packages/41/10/4a1a8407d0fad37cb43d1f749e7b422e5a0f6def17f3b90ab9ab9a105e32/torchcodec-0.7.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:3cd23c3296c9b071d56bb2c534a6a98275d65c1a6a7213cdb72a26ec9f9d2fd8", size = 1421871, upload-time = "2025-09-08T14:17:43.419Z" },
 ]
 
 [[package]]

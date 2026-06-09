@@ -1,6 +1,0 @@
-locations:
-  - location_name: datasets
-    code_source:
-      package_name: orchestration.definitions
-    build:
-      directory: ./

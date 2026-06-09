@@ -32,6 +32,7 @@ dependencies = [
     # GPTilt Datasets Packages
     "ds-common",
     "ds-documents",
+    "ds-esports",
     "ds-hugging-face",
     "ds-models",
     "ds-riot-api",
@@ -62,6 +63,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 ds-common = { workspace = true }
 ds-documents = { workspace = true }
+ds-esports = { workspace = true }
 ds-hugging-face = { workspace = true }
 ds-models = { workspace = true }
 ds-riot-api = { workspace = true }

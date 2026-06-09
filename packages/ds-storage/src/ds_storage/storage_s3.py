@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import polars as pl
 from pydantic import PrivateAttr
+from typing import Optional
 from .storage_base import NonEmptyStr, RecordNotFoundError, Storage
 
 
@@ -43,8 +44,8 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        file_extension: str = None,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ) -> Path:
         """
         Returns the fully qualified file path for the given table and object name.
@@ -58,13 +59,14 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ) -> str:
         """
         Performs a HEAD request to check if the object exists in S3.
         Returns the object key if it exists, otherwise raises RecordNotFoundError.
         """
-        key = str(self.object_path(table_name, object_name, **partition_columns))
+        key = str(self.object_path(table_name, object_name, file_extension, **partition_columns))
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=key)
             return key
@@ -77,7 +79,7 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str = "*",
-        **partition_columns: dict[str, str] | None
+        **partition_columns: Optional[dict[str, str]]
     ) -> list[str]:
         """
         Returns a flat list of S3 object keys matching the table, object_name (wildcard supported),
@@ -119,7 +121,7 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
+        **partition_columns: Optional[dict[str, str]]
     ) -> dict | list:
         """Gets a JSON object from S3 and returns the parsed Python value."""
         response = self.client.get_object(
@@ -132,8 +134,8 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        file_extension: str = None,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ) -> pl.DataFrame | None:
         """
         Gets an object from S3 as a Polars DataFrame.
@@ -157,8 +159,8 @@ class StorageS3(Storage):
         target_file_path: str,
         table_name: str,
         object_name: str,
-        file_extension: str = None,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ):
         """Downloads a file from S3"""
         self.client.download_file(
@@ -177,7 +179,7 @@ class StorageS3(Storage):
         target_local_directory: str,
         table_name: str,
         object_name: str = "*",
-        **partition_columns: dict[str, str]
+        **partition_columns: Optional[dict[str, str]]
     ) -> list[str]:
         """
         Downloads all files from a given partition into a local directory.
@@ -214,8 +216,8 @@ class StorageS3(Storage):
         source_file_path: str,
         table_name: str,
         object_name: str,
-        file_extension: str = None,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ):
         """Uploads a file to S3"""
         self.client.upload_file(
@@ -231,10 +233,10 @@ class StorageS3(Storage):
 
     def s3_uri(
         self,
-        table_name: str | None = None,
-        object_name: str | None = None,
-        file_extension: str | None = None,
-        **partition_columns: dict[str, str] | None
+        table_name: Optional[str],
+        object_name: Optional[str],
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ) -> str:
         """
         Build an `s3://bucket/...` URI for use in DuckDB / external queries.
@@ -280,8 +282,8 @@ class StorageS3(Storage):
         data: pl.DataFrame | list[dict],
         table_name: str,
         object_name: str,
-        file_extension: str = None,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str],
+        **partition_columns: Optional[dict[str, str]]
     ) -> bool:
         """
         Upload `data` to S3. Returns True on write, False on no-op.

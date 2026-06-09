@@ -156,6 +156,10 @@ class StorageIceberg(Storage):
                         table.append(pyarrow_table)
                     case 'upsert':
                         table.upsert(pyarrow_table)
+                    case 'overwrite':
+                        # Replaces all rows with the new payload — used for "latest
+                        # snapshot" tables where history is not retained at this layer.
+                        table.overwrite(pyarrow_table)
                     case _:
                         raise ValueError(f"Unsupported write mode: '{mode}'")
                 return  # Success
