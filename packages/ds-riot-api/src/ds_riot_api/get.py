@@ -60,15 +60,15 @@ async def fetch_with_rate_limit(
                     continue
                 elif response.status == 502:
                     context.log.info(f"[BAD GATEWAY] {endpoint} - retrying...")
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
                     continue
                 elif response.status == 503:
                     context.log.info(f"[SERVER UNAVAILABLE] {endpoint} - retrying...")
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
                     continue
                 elif response.status == 504:
                     context.log.info(f"[GATEWAY TIMEOUT] {endpoint} - retrying...")
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
                     continue
                 elif response.status != 200:
                     raise Exception(f"Error {response.status} on {url}")
