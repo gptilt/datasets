@@ -51,7 +51,7 @@ async def fetch_with_rate_limit(
 
     try:
         url = ENDPOINTS[endpoint](**kwargs)
-        for _attempt in range(6):
+        for _attempt in range(7):
             async with session.get(url, headers={"X-Riot-Token": RIOT_API_KEY}) as response:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", 30))
