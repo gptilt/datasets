@@ -34,12 +34,16 @@ resources = {
         root=DEPLOYMENT_NAME,
         dataset='esports',
         schema_name='raw',
-        tables=['leaguepedia_players', 'leaguepedia_staff', 'leaguepedia_teams'],
+        tables=['leaguepedia_players', 'leaguepedia_player_redirects', 'leaguepedia_teams'],
         file_extension='json',
         bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
         bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
         access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
         secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
+    ),
+    "esports_cargo": ds_esports.CargoClient(
+        username=dg.EnvVar("FANDOM_USERNAME"),
+        password=dg.EnvVar("FANDOM_PASSWORD"),
     ),
     "esports_catalog_clean": ds_storage.StorageIceberg(
         root=DEPLOYMENT_NAME,

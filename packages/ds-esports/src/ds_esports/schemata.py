@@ -1,6 +1,4 @@
 """
-Iceberg schemas for the `esports.clean` namespace.
-
 The clean layer is overwrite-only — these schemas describe the shape of the *latest
 snapshot*, not historical state. SCD-Type-2 history (with `valid_from` / `valid_to`)
 will live in the future `curated` layer.

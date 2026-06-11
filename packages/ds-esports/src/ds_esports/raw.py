@@ -1,143 +1,103 @@
 """
 Raw-layer assets: full Cargo-table snapshots written as JSON to S3.
 
-Each asset paginates through one Cargo table at the Leaguepedia politeness limit
-and writes the full result set as a single partition keyed by scrape date. The
-partition cadence (biweekly Mon for persons/staff/teams) is set on the schedule
-side, not the asset.
+Leaguepedia's Players, PlayerRedirects, and Teams Cargo tables are materialized by
+a single `@dg.multi_asset` op so the scrapes share one CargoClient and run
+sequentially within a single execution step. Splitting them into independent assets
+would blow through Leaguepedia's ≤2 req/s politeness budget.
+
+`@no_backfills` is applied because a Cargo snapshot is inherently "right now":
+re-running raw for an old week would just re-scrape current Leaguepedia state and
+write it under last week's path, which would mislead the clean layer (and any
+downstream auditor) about what the data represented at that point in time.
 
 The fields lists below are the columns we actually consume in the clean layer —
 deliberately narrow so that future Cargo schema changes only break us when they
 touch something we use.
 """
 import dagster as dg
-from datetime import datetime, timezone
+from ds_common import no_backfills
 from ds_storage import StorageS3
 
 from .cargo import CargoClient
+from .partitions import partition_kwargs, partition_per_week
 
 
-# Columns from the Cargo `Players` table. `_pageName` is the canonical Leaguepedia
-# entry name and serves as our person identifier.
+# `Players` is Leaguepedia's unified persons table — players, ex-pros, coaches,
+# casters, analysts (the old separate `Staff` table was removed). `OverviewPage`
+# is Leaguepedia's canonical cross-table page key, so we use it as the person id
+# (it's what `PlayerRedirects` joins on).
 _PLAYERS_FIELDS = ", ".join([
-    "_pageName=PageName",
+    "OverviewPage",
     "ID",                # the player's IGN
     "Name",              # real name (latin)
     "NameAlphabet",      # native-script real name (e.g. Hangul)
     "NativeName",
-    "OtherNames",        # pipe-separated list of additional names/nicknames
     "Country",
-    "Nationality",
     "NationalityPrimary",
-    "Role",              # primary role(s)
-    "Team",              # current team (may be null)
-    "Birthdate",
+    "Role",              # primary role(s) / occupation
     "IsRetired",
-    "IsLowercase",
 ])
 
-# `Staff` has casters/coaches/analysts/owners — the "non-player public figures".
-_STAFF_FIELDS = ", ".join([
-    "_pageName=PageName",
-    "ID",
-    "Name",
-    "NativeName",
-    "Country",
-    "Nationality",
-    "Occupation",        # caster | coach | analyst | owner | …
-    "OtherNames",
-    "Birthdate",
-    "IsRetired",
+# Player alt-names / nicknames.
+# `AllName` is the alias, `OverviewPage` the person it points at.
+_PLAYER_REDIRECTS_FIELDS = ", ".join([
+    "AllName",
+    "OverviewPage",
 ])
 
 # `Teams` is the org-level table.
+# `Name` is the full team name, `Short` the abbreviation.
 _TEAMS_FIELDS = ", ".join([
     "_pageName=PageName",
-    "Name",              # canonical short name (e.g. "T1")
-    "Long",              # long-form name
+    "Name",
     "Short",
     "Location",
     "Region",
-    "OrganizationalAffiliation",
     "IsDisbanded",
-    "RenamedTo",
 ])
 
+# (output_name, cargo_table, fields, raw_table_name)
+_SCRAPES = [
+    ("raw_leaguepedia_players",          "Players",         _PLAYERS_FIELDS,          "leaguepedia_players"),
+    ("raw_leaguepedia_player_redirects", "PlayerRedirects", _PLAYER_REDIRECTS_FIELDS, "leaguepedia_player_redirects"),
+    ("raw_leaguepedia_teams",            "Teams",           _TEAMS_FIELDS,            "leaguepedia_teams"),
+]
 
-def _scrape_partition_kwargs() -> dict:
+
+@dg.multi_asset(
+    group_name="esports",
+    partitions_def=partition_per_week,
+    specs=[
+        dg.AssetSpec(key=name, group_name="esports") for name, *_ in _SCRAPES
+    ],
+)
+@no_backfills
+async def asset_raw_leaguepedia(
+    context: dg.AssetExecutionContext,
+    esports_bucket: StorageS3,
+    esports_cargo: CargoClient,
+):
     """
-    Partition keys for a snapshot taken at the moment the asset runs.
-
-    Same shape as the youtube buckets (year / month / week_of) so callers reading
-    cross-dataset partitions don't have to special-case esports.
+    Full snapshot of Leaguepedia's Players, PlayerRedirects, and Teams Cargo tables.
     """
-    now = datetime.now(timezone.utc)
-    iso_year, iso_week, _ = now.isocalendar()
-    # Anchor each scrape to the Monday of its ISO week so re-runs within the same
-    # week land in the same partition (idempotent overwrite).
-    monday = datetime.fromisocalendar(iso_year, iso_week, 1)
-    return {
-        "year": now.year,
-        "month": now.month,
-        "week_of": monday.strftime("%Y%m%d"),
-    }
+    kwargs = partition_kwargs(context.partition_key)
 
+    for output_name, cargo_table, fields, raw_table_name in _SCRAPES:
+        rows = list(esports_cargo.query(cargo_table, fields))
+        context.log.info(f"Fetched {len(rows)} rows from Cargo table '{cargo_table}'")
 
-def _scrape_table(
-    context: dg.AssetExecutionContext,
-    bucket: StorageS3,
-    cargo_table: str,
-    fields: str,
-    raw_table_name: str,
-) -> dg.MaterializeResult:
-    client = CargoClient()
-    rows = list(client.query(cargo_table, fields))
-    context.log.info(f"Fetched {len(rows)} rows from Cargo table '{cargo_table}'")
-
-    partition_kwargs = _scrape_partition_kwargs()
-    bucket.upload(
-        rows,
-        raw_table_name,
-        object_name=partition_kwargs["week_of"],
-        **partition_kwargs,
-    )
-    return dg.MaterializeResult(
-        metadata={
-            "row_count": len(rows),
-            "cargo_table": cargo_table,
-            "scrape_partition": dg.MetadataValue.json(partition_kwargs),
-        }
-    )
-
-
-@dg.asset(name="raw_leaguepedia_players", group_name="esports")
-def asset_raw_leaguepedia_players(
-    context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-):
-    """Full snapshot of Leaguepedia's `Players` Cargo table."""
-    return _scrape_table(
-        context, esports_bucket, "Players", _PLAYERS_FIELDS, "leaguepedia_players"
-    )
-
-
-@dg.asset(name="raw_leaguepedia_staff", group_name="esports")
-def asset_raw_leaguepedia_staff(
-    context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-):
-    """Full snapshot of Leaguepedia's `Staff` Cargo table (casters/coaches/analysts/owners)."""
-    return _scrape_table(
-        context, esports_bucket, "Staff", _STAFF_FIELDS, "leaguepedia_staff"
-    )
-
-
-@dg.asset(name="raw_leaguepedia_teams", group_name="esports")
-def asset_raw_leaguepedia_teams(
-    context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-):
-    """Full snapshot of Leaguepedia's `Teams` Cargo table."""
-    return _scrape_table(
-        context, esports_bucket, "Teams", _TEAMS_FIELDS, "leaguepedia_teams"
-    )
+        esports_bucket.upload(
+            rows,
+            raw_table_name,
+            object_name=kwargs["week_of"],
+            **kwargs,
+        )
+        yield dg.MaterializeResult(
+            asset_key=output_name,
+            metadata={
+                "row_count": len(rows),
+                "cargo_table": cargo_table,
+                "partition": dg.MetadataValue.json(kwargs),
+            },
+        )

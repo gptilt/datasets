@@ -5,7 +5,7 @@ dependencies = [
     "polars",
     "pyarrow",
     "pyiceberg",
-    "requests",
+    "mwcleric",
     "ds_common",
     "ds_storage",
 ]

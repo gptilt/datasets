@@ -44,7 +44,7 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        file_extension: Optional[str],
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ) -> Path:
         """
@@ -59,7 +59,7 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        file_extension: Optional[str],
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ) -> str:
         """
@@ -134,7 +134,7 @@ class StorageS3(Storage):
         self,
         table_name: str,
         object_name: str,
-        file_extension: Optional[str],
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ) -> pl.DataFrame | None:
         """
@@ -159,7 +159,7 @@ class StorageS3(Storage):
         target_file_path: str,
         table_name: str,
         object_name: str,
-        file_extension: Optional[str],
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ):
         """Downloads a file from S3"""
@@ -216,7 +216,7 @@ class StorageS3(Storage):
         source_file_path: str,
         table_name: str,
         object_name: str,
-        file_extension: Optional[str],
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ):
         """Uploads a file to S3"""
@@ -233,9 +233,9 @@ class StorageS3(Storage):
 
     def s3_uri(
         self,
-        table_name: Optional[str],
-        object_name: Optional[str],
-        file_extension: Optional[str],
+        table_name: Optional[str] = None,
+        object_name: Optional[str] = None,
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ) -> str:
         """
@@ -282,7 +282,7 @@ class StorageS3(Storage):
         data: pl.DataFrame | list[dict],
         table_name: str,
         object_name: str,
-        file_extension: Optional[str],
+        file_extension: Optional[str] = None,
         **partition_columns: Optional[dict[str, str]]
     ) -> bool:
         """
