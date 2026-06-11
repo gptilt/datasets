@@ -1,7 +1,10 @@
 import dagster as dg
 from pathlib import Path
 from pydantic import Field
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import duckdb
 
 
 NonEmptyStr = Annotated[str, Field(min_length=1, strip_whitespace=True)]
@@ -27,7 +30,7 @@ class Storage(dg.ConfigurableResource):
 
     def root_path(self) -> Path:
         return Path(self.root, self.dataset, self.schema_name)
-    
+
     def table_path(self, table_name: str) -> Path:
         self.validate_table_name(table_name)
         return Path(self.root_path(), table_name)
@@ -36,8 +39,14 @@ class Storage(dg.ConfigurableResource):
         """
         Get the path for a partitioned table using k=v pairs.
         """
-        partition = Path(
+        return Path(
             self.table_path(table_name),
             *[f"{k}={v}" for k, v in partition_columns.items()],
         )
-        return partition
+
+    def connect(self) -> "duckdb.DuckDBPyConnection":
+        """
+        Returns a DuckDB connection pre-configured for ad-hoc exploration of this
+        storage's tables. Subclasses must implement this.
+        """
+        raise NotImplementedError

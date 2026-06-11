@@ -4,6 +4,9 @@ tmp
 .tmp*
 *.duckdb
 
+# Local Dagster instance home (SQLite metadata/logs for `make dev`)
+.dagster_home
+
 # Common
 .env
 *.egg-info

@@ -1,21 +1,24 @@
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+import duckdb
 import fnmatch
 import io
 import json
+import os
 from pathlib import Path
 import polars as pl
 from pydantic import PrivateAttr
-from .storage_base import NonEmptyStr, RecordNotFoundError
-from .storage_file import StorageFile
+from typing import Optional
+from .storage_base import NonEmptyStr, RecordNotFoundError, Storage
 
 
-class StorageS3(StorageFile):
+class StorageS3(Storage):
     bucket_endpoint: NonEmptyStr
     bucket_name: NonEmptyStr
     access_key_id: NonEmptyStr
     secret_access_key: NonEmptyStr
+    file_extension: str = 'json'
 
     # Declare a private attribute that Pydantic/Dagster ignores during serialization
     _client: object = PrivateAttr(default=None)
@@ -41,27 +44,29 @@ class StorageS3(StorageFile):
         self,
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
     ) -> Path:
         """
         Returns the fully qualified file path for the given table and object name.
         """
         return Path(
             self.partition_path(table_name, **partition_columns),
-            f"{object_name}.{self.file_extension}"
+            f"{object_name}.{file_extension or self.file_extension}"
         )
     
     def object_exists(
         self,
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
     ) -> str:
         """
         Performs a HEAD request to check if the object exists in S3.
         Returns the object key if it exists, otherwise raises RecordNotFoundError.
         """
-        key = str(self.object_path(table_name, object_name, **partition_columns))
+        key = str(self.object_path(table_name, object_name, file_extension, **partition_columns))
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=key)
             return key
@@ -74,7 +79,7 @@ class StorageS3(StorageFile):
         self,
         table_name: str,
         object_name: str = "*",
-        **partition_columns: dict[str, str] | None
+        **partition_columns: Optional[dict[str, str]]
     ) -> list[str]:
         """
         Returns a flat list of S3 object keys matching the table, object_name (wildcard supported),
@@ -109,57 +114,201 @@ class StorageS3(StorageFile):
                 if fnmatch.fnmatch(filename, file_pattern):
                     results.append(key)
 
-        return results        
+        return results
+
+
+    def get_object_as_json(
+        self,
+        table_name: str,
+        object_name: str,
+        **partition_columns: Optional[dict[str, str]]
+    ) -> dict | list:
+        """Gets a JSON object from S3 and returns the parsed Python value."""
+        response = self.client.get_object(
+            Bucket=self.bucket_name,
+            Key=str(self.object_path(table_name, object_name, 'json', **partition_columns))
+        )
+        return json.loads(response['Body'].read())
 
     def get_object_as_dataframe(
         self,
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
     ) -> pl.DataFrame | None:
         """
         Gets an object from S3 as a Polars DataFrame.
         """
+        ext = file_extension or self.file_extension
         response = self.client.get_object(
             Bucket=self.bucket_name,
-            Key=str(self.object_path(table_name, object_name, **partition_columns))
+            Key=str(self.object_path(table_name, object_name, file_extension, **partition_columns))
         )
 
-        match self.file_extension:
+        match ext:
             case 'json':
                 return pl.read_json(response['Body'].read())
             case 'parquet':
                 return pl.read_parquet(response["Body"].read())
             case _:
-                raise ValueError(f"Unsupported file extension: {self.file_extension}")
+                raise ValueError(f"Unsupported file extension: {ext}")
+
+    def download_file(
+        self,
+        target_file_path: str,
+        table_name: str,
+        object_name: str,
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
+    ):
+        """Downloads a file from S3"""
+        self.client.download_file(
+            Filename=target_file_path,
+            Bucket=self.bucket_name,
+            Key=str(self.object_path(
+                table_name,
+                object_name,
+                file_extension,
+                **partition_columns
+            ))
+        )
+
+    def download_all_files_in_partition(
+        self,
+        target_local_directory: str,
+        table_name: str,
+        object_name: str = "*",
+        **partition_columns: Optional[dict[str, str]]
+    ) -> list[str]:
+        """
+        Downloads all files from a given partition into a local directory.
+        
+        Returns a list of local file paths.
+        """
+        os.makedirs(target_local_directory, exist_ok=True)
+
+        # List all files in given partition
+        keys = self.list_objects(
+            table_name=table_name,
+            object_name=object_name,
+            **partition_columns
+        )
+
+        downloaded_files = []
+
+        for key in keys:
+            filename = Path(key).name
+            local_path = os.path.join(target_local_directory, filename)
+
+            self.client.download_file(
+                Bucket=self.bucket_name,
+                Key=key,
+                Filename=local_path
+            )
+
+            downloaded_files.append(local_path)
+
+        return downloaded_files
 
     def upload_file(
         self,
-        file_path: str,
+        source_file_path: str,
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
     ):
         """Uploads a file to S3"""
         self.client.upload_file(
-            Filename=file_path,
+            Filename=source_file_path,
             Bucket=self.bucket_name,
-            Key=str(self.object_path(table_name, object_name, **partition_columns))
+            Key=str(self.object_path(
+                table_name,
+                object_name,
+                file_extension,
+                **partition_columns
+            ))
         )
-    
+
+    def s3_uri(
+        self,
+        table_name: Optional[str] = None,
+        object_name: Optional[str] = None,
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
+    ) -> str:
+        """
+        Build an `s3://bucket/...` URI for use in DuckDB / external queries.
+
+        - With no args, returns the bucket root.
+        - With `table_name`, returns the table or partition prefix.
+        - With `object_name`, returns the fully qualified object URI.
+        """
+        if table_name is None:
+            return f"s3://{self.bucket_name}"
+
+        if object_name is None:
+            base = self.partition_path(table_name, **partition_columns)
+            return f"s3://{self.bucket_name}/{base}"
+
+        return f"s3://{self.bucket_name}/{self.object_path(table_name, object_name, file_extension, **partition_columns)}"
+
+    def connect(self) -> duckdb.DuckDBPyConnection:
+        """
+        Returns a DuckDB connection pre-configured with httpfs and S3 credentials
+        sourced from this resource. Use `self.s3_uri(...)` to build paths and
+        query with `read_parquet` / `read_json` / `glob`.
+        """
+        con = duckdb.connect()
+        con.execute("INSTALL httpfs; LOAD httpfs;")
+        endpoint = self.bucket_endpoint.removeprefix('https://').removeprefix('http://')
+        con.execute(
+            f"""
+            CREATE OR REPLACE SECRET (
+                TYPE s3,
+                KEY_ID '{self.access_key_id}',
+                SECRET '{self.secret_access_key}',
+                ENDPOINT '{endpoint}',
+                URL_STYLE 'path',
+                REGION 'auto'
+            )
+            """
+        )
+        return con
+
     def upload(
         self,
         data: pl.DataFrame | list[dict],
         table_name: str,
         object_name: str,
-        **partition_columns: dict[str, str] | None
-    ):
-        assert isinstance(data, (pl.DataFrame, list)), "Data must be a DataFrame or a list of records"
+        file_extension: Optional[str] = None,
+        **partition_columns: Optional[dict[str, str]]
+    ) -> bool:
+        """
+        Upload `data` to S3. Returns True on write, False on no-op.
 
-        object_key = str(self.object_path(table_name, object_name, **partition_columns))
+        No-op on empty input: an empty list serializes to `[]` (pointless), and an empty
+        Polars DataFrame writes a zero-column "root only" parquet that DuckDB and most
+        readers reject as malformed. Either way, callers shouldn't have to know — we
+        silently skip the write so glob-based readers don't trip over corpse blobs.
+        """
+        file_extension = file_extension or self.file_extension
 
-        match self.file_extension:
+        if len(data) == 0:
+            return False
+
+        object_key = str(self.object_path(
+            table_name=table_name,
+            object_name=object_name,
+            file_extension=file_extension,
+            **partition_columns
+        ))
+
+        match file_extension:
             case 'json':
+                assert isinstance(data, list), "Data must be a list of records for JSON uploads"
+
                 self.client.put_object(
                     Bucket=self.bucket_name,
                     Key=object_key,
@@ -167,6 +316,8 @@ class StorageS3(StorageFile):
                     ContentType='application/json'
                 )
             case 'parquet':
+                assert isinstance(data, pl.DataFrame), "Data must be a DataFrame for parquet uploads"
+
                 buffer = io.BytesIO()
                 data.write_parquet(buffer)
                 buffer.seek(0)
@@ -178,4 +329,6 @@ class StorageS3(StorageFile):
                     ContentType='application/octet-stream'
                 )
             case _:
-                raise ValueError(f"Uploads aren't supported for file extension: '{self.file_extension}'")
+                raise ValueError(f"Uploads aren't supported for file extension: '{file_extension}'")
+
+        return True

@@ -11,24 +11,33 @@ def _validate_no_backfill(args, kwargs):
             if isinstance(arg, dg.AssetExecutionContext):
                 context = arg
                 break
-                
-    if context and context.has_partition_key:
-        if isinstance(context.partition_key, dg.MultiPartitionKey):
-            date_str = context.partition_key.keys_by_dimension.get("day")
-        else:
-            date_str = context.partition_key
 
-        if date_str:
-            p_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            today_date = datetime.now(timezone.utc).date()
-            
-            if p_date != today_date:
-                raise ValueError(
-                    f"Cannot fetch historical data for '{context.asset_key.to_user_string()}'. "
-                    f"Target partition: {p_date}. Today: {today_date}. "
-                    "This asset only works with current data. If you are trying to "
-                    "backfill downstream tables, please deselect the raw assets and try again."
-                )
+    if not (context and context.has_partition_key):
+        return
+
+    # Use the partition's time window so the check works for any time-based
+    # partition (daily, weekly, monthly, …) and any time-based dimension of a
+    # MultiPartitionsDefinition. Strict equality against `partition_key` only
+    # works for daily — for weekly partitions today's date almost never matches
+    # the partition's anchor day.
+    try:
+        window = context.partition_time_window
+    except (ValueError, AttributeError):
+        # Pure static partition with no time dimension — nothing to validate.
+        return
+
+    today_date = datetime.now(timezone.utc).date()
+    start_date = window.start.date()
+    end_date = window.end.date()
+
+    if not (start_date <= today_date < end_date):
+        raise ValueError(
+            f"Cannot fetch historical data for '{context.asset_key.to_user_string()}'. "
+            f"Today ({today_date}) is outside the partition window "
+            f"[{start_date}, {end_date}). This asset only works with current data. "
+            "If you are trying to backfill downstream tables, please deselect the "
+            "raw assets and try again."
+        )
 
 def no_backfills(func):
     """

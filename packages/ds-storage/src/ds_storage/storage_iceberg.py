@@ -1,4 +1,5 @@
 from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema
+import duckdb
 from functools import reduce
 import polars as pl
 import pyarrow as pa
@@ -155,6 +156,10 @@ class StorageIceberg(Storage):
                         table.append(pyarrow_table)
                     case 'upsert':
                         table.upsert(pyarrow_table)
+                    case 'overwrite':
+                        # Replaces all rows with the new payload — used for "latest
+                        # snapshot" tables where history is not retained at this layer.
+                        table.overwrite(pyarrow_table)
                     case _:
                         raise ValueError(f"Unsupported write mode: '{mode}'")
                 return  # Success
@@ -188,6 +193,25 @@ class StorageIceberg(Storage):
             backoff_factor=backoff_factor
         )
 
+
+    def connect(self) -> duckdb.DuckDBPyConnection:
+        """
+        Returns a DuckDB connection with each table in `self.tables` registered as
+        an in-memory Arrow scan, queryable by its bare table name.
+
+        Tables that don't yet exist in the catalog are skipped silently — useful
+        for first-time exploration before any writes have happened. Re-call
+        `connect()` after writes to refresh.
+        """
+        con = duckdb.connect()
+        for table_name in self.tables:
+            full_name = self.full_table_name(table_name)
+            try:
+                arrow = self.catalog.load_table(full_name).scan().to_arrow()
+            except Exception:
+                continue
+            con.register(table_name, arrow)
+        return con
 
     def write_records_to_table(
         self,
