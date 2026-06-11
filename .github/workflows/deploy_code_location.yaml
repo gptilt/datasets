@@ -1,131 +1,48 @@
-name: Dagster Cloud Hybrid Deployment
+name: Deploy datasets (self-hosted Dagster)
+
+# Build the user-code image and push it to ECR.
 
 on:
-  push: # For full deployments
+  push:
     branches:
+      # main  -> dev environment, prod -> production
       # - main
       - prod
-  # pull_request:  # For branch deployments
-  #    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 concurrency:
   # Cancel in-progress deploys to the same branch
   group: ${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
+
 env:
-  DAGSTER_LOCATION_NAME: datasets
-  # The organization name in Dagster Cloud
-  DAGSTER_CLOUD_ORGANIZATION: ${{ secrets.DAGSTER_CLOUD_ORGANIZATION }}
-  # The API token from https://dagster.cloud/ should be stored in Secrets
-  DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-  # Path to the root folder containing the dagster project
-  DAGSTER_PROJECT_DIR: "."
-  # Path to dagster_cloud.yaml relative to DAGSTER_PROJECT_DIR
-  DAGSTER_CLOUD_YAML_PATH: "dagster_cloud.yaml"
-  # The IMAGE_REGISTRY should match the 'registry:'' in dagster_cloud.yaml
-  IMAGE_REGISTRY: ghcr.io/${{ github.repository }}
+  # main -> dev, anything else (prod) -> prod
+  ENVIRONMENT: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
+  IMAGE_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ github.repository }}
   IMAGE_TAG: ${{ github.sha }}
+
 jobs:
-  dagster-cloud-deploy:
+  deploy:
     runs-on: ubuntu-22.04
     environment: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
     permissions:
       contents: read
-      id-token: write  # Required for OIDC auth to AWS
+      id-token: write  # OIDC auth to AWS
     steps:
-      # If this is a closed PR the prerun step closes the branch deployment and returns
-      # output.result='skip' which is used to skip other steps in this workflow.
-      - name: Pre-run checks
-        id: prerun
-        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.11.9
-
       - name: Generate token to read submodules
         id: submodules-access-token
         uses: actions/create-github-app-token@v1
-        if: steps.prerun.outputs.result != 'skip'
         with:
           app-id: ${{ secrets.GPTILT_READONLY_ACCESS_APP_ID }}
           private-key: ${{ secrets.GPTILT_READONLY_ACCESS_APP_PRIVATE_KEY }}
           # Adding 'owner' is required to make the token org-wide
           owner: ${{ github.repository_owner }}
 
-      # Checkout the project
       - name: Checkout
         uses: actions/checkout@v4
-        if: steps.prerun.outputs.result != 'skip'
         with:
-          ref: ${{ github.head_ref }}
           submodules: recursive
           token: ${{ steps.submodules-access-token.outputs.token }}
-
-      # Update Dagster deployment settings
-      - name: Update Dagster deployment settings
-        if: steps.prerun.outputs.result != 'skip'
-        run: |
-          SETTINGS=$(cat dagster_deployment_settings.json)
-          jq -n \
-            --argjson settings "$SETTINGS" \
-            '{
-              query: "mutation UpdateDeploymentSettings($deploymentSettings: DeploymentSettingsInput!) { updateDeploymentSettings(deploymentSettings: $deploymentSettings) { ... on DeploymentSettings { settings } } }",
-              variables: {
-                deploymentSettings: {
-                  settings: $settings
-                }
-              }
-            }' \
-          | curl -X POST \
-              -H "Authorization: Bearer ${{ env.DAGSTER_CLOUD_API_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              https://${{ env.DAGSTER_CLOUD_ORGANIZATION }}.dagster.cloud/prod/graphql \
-              -d @-
-
-      # Validate dagster_cloud.yaml and the connection to dagster.cloud
-      - name: Validate configuration
-        id: ci-validate
-        if: steps.prerun.outputs.result != 'skip'
-        uses: dagster-io/dagster-cloud-action/actions/utils/dagster-cloud-cli@v1.11.9
-        with:
-          command: "ci check --project-dir ${{ env.DAGSTER_PROJECT_DIR }} --dagster-cloud-yaml-path ${{ env.DAGSTER_CLOUD_YAML_PATH }}"
-
-      # Parse dagster_cloud.yaml, detect if this is branch deployment and initialize the build session
-      - name: Initialize build session
-        id: ci-init
-        if: steps.prerun.outputs.result != 'skip'
-        uses: dagster-io/dagster-cloud-action/actions/utils/ci-init@v1.11.9
-        with:
-          project_dir: ${{ env.DAGSTER_PROJECT_DIR }}
-          dagster_cloud_yaml_path: ${{ env.DAGSTER_CLOUD_YAML_PATH }}
-          # A full deployment name. If this run is for a pull request, this value will be used as
-          # the base deployment for the branch deployment.
-          deployment: ${{ github.ref_name == 'main' && 'dev' || 'prod' }}
-
-      # Enable buildx for caching
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # DEBUG
-      - name: Debug OIDC token
-        run: |
-          TOKEN=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
-            | jq -r '.value')
-          # Print the claims (middle segment of the JWT)
-          echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | jq .
-      
-      - name: Test STS directly
-        run: |
-          TOKEN=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
-            | jq -r '.value')
-          
-          aws sts assume-role-with-web-identity \
-            --role-arn ${{ secrets.AWS_ECR_PUSH_ROLE_ARN }} \
-            --role-session-name debug-session \
-            --web-identity-token "$TOKEN" \
-            --region us-east-1
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.0.0
@@ -133,61 +50,21 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ECR_PUSH_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Additional steps
-        run: |
-          # Your commands that require AWS credentials
-          aws sts get-caller-identity
-
       - name: Login to Amazon ECR
-        if: steps.prerun.outputs.result != 'skip'
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      # For each code location, the "build-push-action" builds the docker
-      # image and a "set-build-output" command records the image tag for each code location.
-      # To re-use the same docker image across multiple code locations, build the docker image once
-      # and specify the same tag in multiple "set-build-output" commands. To use a different docker
-      # image for each code location, use multiple "build-push-actions" with a location specific
-      # tag.
-      - name: Build and upload Docker image
-        if: steps.prerun.outputs.result != 'skip'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Build once, tag with the commit SHA (immutable) and the environment (prod/dev).
+      - name: Build and push image to ECR
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: |
             ${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_REGISTRY }}:${{ github.ref_name }}
+            ${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Update build session with image tag
-        id: ci-set-build-output
-        if: steps.prerun.outputs.result != 'skip'
-        uses: dagster-io/dagster-cloud-action/actions/utils/dagster-cloud-cli@v1.11.9
-        with:
-          command: "ci set-build-output --location-name=${{ env.DAGSTER_LOCATION_NAME }} --image-tag=${{ env.IMAGE_TAG }}"
-
-      # Deploy all code locations in this build session to Dagster Cloud
-      - name: Deploy to Dagster Cloud
-        id: ci-deploy
-        if: steps.prerun.outputs.result != 'skip'
-        uses: dagster-io/dagster-cloud-action/actions/utils/dagster-cloud-cli@v1.11.9
-        with:
-          command: "ci deploy"
-
-      # Update a PR comment - this runs always() so the comment is updated on success and failure
-      - name: Update PR comment for branch deployments
-        id: ci-notify
-        if: steps.prerun.outputs.result != 'skip' && always()
-        uses: dagster-io/dagster-cloud-action/actions/utils/dagster-cloud-cli@v1.11.9
-        with:
-          command: "ci notify --project-dir=${{ env.DAGSTER_PROJECT_DIR }}"
-
-      # Generate a summary that shows up on the Workflow Summary page
-      - name: Generate a summary
-        id: ci-summary
-        if: steps.prerun.outputs.result != 'skip' && always()
-        uses: dagster-io/dagster-cloud-action/actions/utils/dagster-cloud-cli@v1.11.9
-        with:
-          command: "ci status --output-format=markdown >> $GITHUB_STEP_SUMMARY"

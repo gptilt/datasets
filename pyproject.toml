@@ -39,7 +39,8 @@ dependencies = [
     "ds-runtime",
     "ds-scribe",
     "ds-storage",
-    "ds-tables"
+    "ds-tables",
+    "mwcleric>=0.10.4",
 ]
 
 [project.optional-dependencies]
@@ -47,11 +48,16 @@ private = ["ds-chatbot"]
 
 [dependency-groups]
 dev = [
-    "dagster-webserver>=1.13.1",
-    "dagster-dg-cli>=1.13.1",
+    "dagster-webserver>=1.13.8",
+    "dagster-dg-cli>=1.13.8",
 ]
-cloud = [
-    "dagster-cloud>=1.13.1",
+# Extras the self-hosted prod image needs at runtime. The image is built
+# `--no-dev`, so the webserver (and Postgres storage driver) must live outside the
+# dev group. dagster-daemon ships with the core `dagster` package — no extra dep.
+server = [
+    "dagster-webserver>=1.13.8",
+    # Integration libs follow Dagster's 0.x series: 0.29.x ↔ core 1.13.x.
+    "dagster-postgres>=0.29.8",
 ]
 
 [tool.uv]

@@ -1,0 +1,11 @@
+# Tells dagster-webserver and dagster-daemon where the user-code lives.
+#
+# Under OSS self-host the code runs as a long-lived gRPC server in its own
+# container (`dagster api grpc -m orchestration.definitions`), reachable by the
+# `dagster-user-code` hostname on the shared docker network. host/port must match
+# the container name and port the infra run script starts it with.
+load_from:
+  - grpc_server:
+      host: dagster-user-code
+      port: 4000
+      location_name: datasets

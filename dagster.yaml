@@ -1,7 +1,79 @@
+# OSS self-hosted Dagster instance config.
+#
+# Shared (read-only) by every container that runs off this image: the user-code
+# gRPC server, dagster-webserver, and dagster-daemon. DAGSTER_HOME points here so
+# all three see the same instance — metadata in Postgres, compute logs on the
+# shared /mnt/storage volume.
+#
+# Replaces the Dagster+ control plane: settings that used to live in
+# dagster_deployment_settings.json (pushed via GraphQL) now live here. Plus-only
+# keys (sso_default_role, non_isolated_runs, branch_deployments) are dropped.
+
+# --- Metadata storage --------------------------------------------------------
+# Postgres container on the same box. Chosen over SQLite
+# because the webserver, daemon, and run workers write concurrently from separate
+# containers — SQLite on a shared volume deadlocks under that. Connection comes
+# from env injected by the infra run script.
+storage:
+  postgres:
+    postgres_db:
+      username:
+        env: DAGSTER_PG_USERNAME
+      password:
+        env: DAGSTER_PG_PASSWORD
+      hostname:
+        env: DAGSTER_PG_HOST
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432
+
+# --- Run queue ---------------------------------------------------------------
+# QueuedRunCoordinator gives us the run queue the daemon drains.
+run_coordinator:
+  module: dagster
+  class: QueuedRunCoordinator
+
+# --- Run launcher ------------------------------------------------------------
+# DefaultRunLauncher launches each run as a subprocess inside the user-code gRPC
+# server container. Simplest topology for a single box; no docker.sock needed by
+# the daemon. (Swap for DockerRunLauncher only if runs need isolation.)
+run_launcher:
+  module: dagster
+  class: DefaultRunLauncher
+
+# --- Run monitoring ----------------------------------------------------------
+# Folded in from dagster_deployment_settings.json. The daemon marks runs that
+# never start (or hang on cancel) as FAILURE — important on an intermittently
+# available box.
+run_monitoring:
+  enabled: true
+  start_timeout_seconds: 1200
+  cancel_timeout_seconds: 1200
+  free_slots_after_run_end_seconds: 300
+
+# --- Run retries -------------------------------------------------------------
+run_retries:
+  enabled: true
+  max_retries: 2
+  retry_on_asset_or_op_failure: true
+
+# --- Compute logs ------------------------------------------------------------
+# Per-step stdout/stderr for the UI, written to the persisted /mnt/storage volume
+# so they survive box restarts and the webserver (same mount) can read them.
+compute_logs:
+  module: dagster._core.storage.local_compute_log_manager
+  class: LocalComputeLogManager
+  config:
+    base_dir: /mnt/storage/compute_logs
+
+# --- Concurrency -------------------------------------------------------------
+# Pools + per-run tag limits. max_concurrent_runs (was run_queue in the cloud
+# settings) lives here in 1.13.
 concurrency:
   pools:
     default_limit: 1
   runs:
+    max_concurrent_runs: 6
     tag_concurrency_limits:
       - key: 'concurrency_group'
         value:
