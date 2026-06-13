@@ -59,9 +59,9 @@ _TEAMS_FIELDS = ", ".join([
 
 # (output_name, cargo_table, fields, raw_table_name)
 _SCRAPES = [
-    ("raw_leaguepedia_players",          "Players",         _PLAYERS_FIELDS,          "leaguepedia_players"),
-    ("raw_leaguepedia_player_redirects", "PlayerRedirects", _PLAYER_REDIRECTS_FIELDS, "leaguepedia_player_redirects"),
-    ("raw_leaguepedia_teams",            "Teams",           _TEAMS_FIELDS,            "leaguepedia_teams"),
+    ("raw_esports_leaguepedia_players",          "Players",         _PLAYERS_FIELDS,          "players"),
+    ("raw_esports_leaguepedia_player_redirects", "PlayerRedirects", _PLAYER_REDIRECTS_FIELDS, "player_redirects"),
+    ("raw_esports_leaguepedia_teams",            "Teams",           _TEAMS_FIELDS,            "teams"),
 ]
 
 
@@ -75,19 +75,22 @@ _SCRAPES = [
 @no_backfills
 async def asset_raw_leaguepedia(
     context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-    esports_cargo: CargoClient,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_cargo: CargoClient,
 ):
     """
     Full snapshot of Leaguepedia's Players, PlayerRedirects, and Teams Cargo tables.
     """
     kwargs = partition_kwargs(context.partition_key)
 
+    # Rate limiting (per-page pacing + ratelimited backoff) lives in CargoClient,
+    # so the scrape loop stays simple.
     for output_name, cargo_table, fields, raw_table_name in _SCRAPES:
-        rows = list(esports_cargo.query(cargo_table, fields))
+        context.log.info(f"Querying Cargo table '{cargo_table}'...")
+        rows = list(leaguepedia_cargo.query(context, cargo_table, fields))
         context.log.info(f"Fetched {len(rows)} rows from Cargo table '{cargo_table}'")
 
-        esports_bucket.upload(
+        leaguepedia_bucket.upload(
             rows,
             raw_table_name,
             object_name=kwargs["week_of"],

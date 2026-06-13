@@ -712,16 +712,22 @@ name = "ds-hugging-face"
 version = "0.1.0"
 source = { editable = "packages/ds-hugging-face" }
 dependencies = [
+    { name = "dagster", marker = "sys_platform == 'linux'" },
     { name = "datasets", marker = "sys_platform == 'linux'" },
+    { name = "ds-storage", marker = "sys_platform == 'linux'" },
     { name = "huggingface-hub", marker = "sys_platform == 'linux'" },
     { name = "jinja2", marker = "sys_platform == 'linux'" },
+    { name = "polars", marker = "sys_platform == 'linux'" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "datasets", specifier = ">=3.6.0" },
-    { name = "huggingface-hub", specifier = ">=0.30.2" },
-    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "dagster" },
+    { name = "datasets" },
+    { name = "ds-storage", editable = "packages/ds-storage" },
+    { name = "huggingface-hub" },
+    { name = "jinja2" },
+    { name = "polars" },
 ]
 
 [[package]]
