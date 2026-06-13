@@ -179,32 +179,32 @@ def _build_entity_aliases(
 
 
 @dg.asset(
-    name="clean_public_figures",
+    name="clean_esports_public_figures",
     group_name="esports",
     partitions_def=partition_per_week,
-    deps=["raw_leaguepedia_players"],
+    deps=["raw_esports_leaguepedia_players"],
 )
 def asset_clean_public_figures(
     context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-    esports_catalog_clean: StorageIceberg,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_catalog_clean: StorageIceberg,
 ):
     """
     Unified people table: pros + ex-pros + casters + coaches + analysts + owners.
     Overwrites the Iceberg table with the current partition's snapshot.
     """
     players, partition = _read_partition(
-        esports_bucket, "leaguepedia_players", context.partition_key
+        leaguepedia_bucket, "players", context.partition_key
     )
 
     figures = _build_figures(players)
     df = pl.DataFrame(figures)
 
-    esports_catalog_clean.create_table_if_not_exists(
+    leaguepedia_catalog_clean.create_table_if_not_exists(
         "public_figures",
         schema=SCHEMATA["public_figures"]["schema"],
     )
-    esports_catalog_clean.write_dataframe_to_table(
+    leaguepedia_catalog_clean.write_dataframe_to_table(
         "public_figures", df, mode="overwrite"
     )
     return dg.MaterializeResult(
@@ -216,15 +216,15 @@ def asset_clean_public_figures(
 
 
 @dg.asset(
-    name="clean_teams",
+    name="clean_esports_teams",
     group_name="esports",
     partitions_def=partition_per_week,
-    deps=["raw_leaguepedia_teams"],
+    deps=["raw_esports_leaguepedia_teams"],
 )
 def asset_clean_teams(
     context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-    esports_catalog_clean: StorageIceberg,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_catalog_clean: StorageIceberg,
 ):
     """
     Org-level team table: one row per Leaguepedia `Teams` page, deduped on the
@@ -232,16 +232,16 @@ def asset_clean_teams(
     snapshot — no history is retained at the clean layer.
     """
     teams, partition = _read_partition(
-        esports_bucket, "leaguepedia_teams", context.partition_key
+        leaguepedia_bucket, "teams", context.partition_key
     )
     rows = _build_teams(teams)
     df = pl.DataFrame(rows)
 
-    esports_catalog_clean.create_table_if_not_exists(
+    leaguepedia_catalog_clean.create_table_if_not_exists(
         "teams",
         schema=SCHEMATA["teams"]["schema"],
     )
-    esports_catalog_clean.write_dataframe_to_table("teams", df, mode="overwrite")
+    leaguepedia_catalog_clean.write_dataframe_to_table("teams", df, mode="overwrite")
     return dg.MaterializeResult(
         metadata={
             "row_count": len(rows),
@@ -251,42 +251,42 @@ def asset_clean_teams(
 
 
 @dg.asset(
-    name="clean_entity_aliases",
+    name="clean_esports_entity_aliases",
     group_name="esports",
     partitions_def=partition_per_week,
     deps=[
-        "raw_leaguepedia_players",
-        "raw_leaguepedia_player_redirects",
-        "raw_leaguepedia_teams",
+        "raw_esports_leaguepedia_players",
+        "raw_esports_leaguepedia_player_redirects",
+        "raw_esports_leaguepedia_teams",
     ],
 )
 def asset_clean_entity_aliases(
     context: dg.AssetExecutionContext,
-    esports_bucket: StorageS3,
-    esports_catalog_clean: StorageIceberg,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_catalog_clean: StorageIceberg,
 ):
     """
     Unified alias index (alias → entity) over both people and teams, discriminated
     by `entity_type`.
     """
     players, partition = _read_partition(
-        esports_bucket, "leaguepedia_players", context.partition_key
+        leaguepedia_bucket, "players", context.partition_key
     )
     redirects, _ = _read_partition(
-        esports_bucket, "leaguepedia_player_redirects", context.partition_key
+        leaguepedia_bucket, "player_redirects", context.partition_key
     )
     teams, _ = _read_partition(
-        esports_bucket, "leaguepedia_teams", context.partition_key
+        leaguepedia_bucket, "teams", context.partition_key
     )
 
     aliases = _build_entity_aliases(players, redirects, teams)
     df = pl.DataFrame(aliases)
 
-    esports_catalog_clean.create_table_if_not_exists(
+    leaguepedia_catalog_clean.create_table_if_not_exists(
         "entity_aliases",
         schema=SCHEMATA["entity_aliases"]["schema"],
     )
-    esports_catalog_clean.write_dataframe_to_table(
+    leaguepedia_catalog_clean.write_dataframe_to_table(
         "entity_aliases", df, mode="overwrite"
     )
     return dg.MaterializeResult(
