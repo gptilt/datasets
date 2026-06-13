@@ -38,14 +38,21 @@ SCHEMATA = {
         'partition_spec': None,
         'sort_order': None,
     },
-    'person_aliases': {
+    'entity_aliases': {
         'schema': Schema(
             NestedField(1, 'alias', StringType(), required=True),
-            NestedField(2, 'person_id', StringType(), required=True),
-            NestedField(3, 'alias_type', StringType(), required=True),
-            # Composite PK: a person has many aliases, but each (person, alias) pair
-            # is unique within a snapshot.
-            identifier_field_ids=[1, 2],
+            NestedField(2, 'entity_id', StringType(), required=True),
+            # 'person' | 'team' — the discriminator that lets one polymorphic lookup
+            # cover both public figures and teams. A name resolver / privacy matcher
+            # consumes the whole table and keeps entity_type alongside each hit.
+            NestedField(3, 'entity_type', StringType(), required=True),
+            # ign | real_name | romanization | other (person); short (team).
+            NestedField(4, 'alias_type', StringType(), required=True),
+            # Composite PK: an entity has many aliases, but each
+            # (alias, entity_id, entity_type) triple is unique within a snapshot. The
+            # same string can legitimately appear for a person *and* a team, so
+            # entity_type is part of the key.
+            identifier_field_ids=[1, 2, 3],
         ),
         'partition_spec': None,
         'sort_order': None,
@@ -63,16 +70,6 @@ SCHEMATA = {
             NestedField(9, 'source', StringType(), required=True),
             NestedField(10, 'source_url', StringType(), required=True),
             identifier_field_ids=[1],
-        ),
-        'partition_spec': None,
-        'sort_order': None,
-    },
-    'team_aliases': {
-        'schema': Schema(
-            NestedField(1, 'alias', StringType(), required=True),
-            NestedField(2, 'team_id', StringType(), required=True),
-            NestedField(3, 'alias_type', StringType(), required=True),
-            identifier_field_ids=[1, 2],
         ),
         'partition_spec': None,
         'sort_order': None,

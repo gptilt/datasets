@@ -83,8 +83,11 @@ async def asset_raw_leaguepedia(
     """
     kwargs = partition_kwargs(context.partition_key)
 
+    # Rate limiting (per-page pacing + ratelimited backoff) lives in CargoClient,
+    # so the scrape loop stays simple.
     for output_name, cargo_table, fields, raw_table_name in _SCRAPES:
-        rows = list(esports_cargo.query(cargo_table, fields))
+        context.log.info(f"Querying Cargo table '{cargo_table}'...")
+        rows = list(esports_cargo.query(context, cargo_table, fields))
         context.log.info(f"Fetched {len(rows)} rows from Cargo table '{cargo_table}'")
 
         esports_bucket.upload(
