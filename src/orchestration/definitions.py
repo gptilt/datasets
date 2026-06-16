@@ -54,7 +54,7 @@ resources = {
         tables=list(ds_esports.SCHEMATA.keys()),
         warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
         catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
-        token=dg.EnvVar("CATALOG_TOKEN"),
+        rest_signing_region=dg.EnvVar("AWS_REGION"),
     ),
     "document_bucket": ds_storage.StorageS3(
         root=DEPLOYMENT_NAME,
@@ -74,7 +74,7 @@ resources = {
         tables=list(ds_riot_api.SCHEMATA.keys()),
         warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
         catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
-        token=dg.EnvVar("CATALOG_TOKEN"),
+        rest_signing_region=dg.EnvVar("AWS_REGION"),
     ),
     "hugging_face_hub": ds_hugging_face.HuggingFaceHub(
         token=dg.EnvVar("HUGGING_FACE_TOKEN"),
