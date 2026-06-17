@@ -12,6 +12,7 @@ from pyiceberg.table import DataScan, Table
 from pyiceberg.table.sorting import SortOrder
 import random
 import time
+from typing import Optional
 from .storage_base import Storage, NonEmptyStr
 
 
@@ -34,8 +35,9 @@ class StorageIceberg(Storage):
     """
     warehouse_name: NonEmptyStr
     catalog_uri: NonEmptyStr
-    token: NonEmptyStr
-    
+    token: Optional[NonEmptyStr] = None
+    rest_signing_region: Optional[NonEmptyStr] = None
+
     # Declare a private attribute that Pydantic/Dagster ignores during serialization
     _catalog: object = PrivateAttr(default=None)
 
@@ -46,13 +48,20 @@ class StorageIceberg(Storage):
 
     @property
     def catalog(self):
+        properties = dict(
+            name=self.root,
+            warehouse=self.warehouse_name,
+            uri=self.catalog_uri,
+        )
+        if self.token:
+            properties["token"] = self.token
+        if self.rest_signing_region:
+            properties["rest.sigv4-enabled"] = "true"
+            properties["rest.signing-name"] = "s3tables"
+            properties["rest_signing_region"] = self.rest_signing_region
+
         if self._catalog is None:
-            self._catalog = RestCatalog(
-                name=self.root,
-                warehouse=self.warehouse_name,
-                uri=self.catalog_uri,
-                token=self.token
-            )
+            self._catalog = RestCatalog(**properties)
 
         parts = self.namespace().split(".")
         for i in range(1, len(parts) + 1):

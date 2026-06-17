@@ -19,3 +19,8 @@ private: install submodules
 dev: private
 	@mkdir -p $(CURDIR)/.dagster_home
 	. .venv/bin/activate && DAGSTER_HOME=$(CURDIR)/.dagster_home dagster dev
+
+# Validate definitions locally
+validate: private
+	@mkdir -p $(CURDIR)/.dagster_home
+	. .venv/bin/activate && DAGSTER_HOME=$(CURDIR)/.dagster_home dagster definitions validate -m orchestration.definitions
