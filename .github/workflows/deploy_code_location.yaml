@@ -72,20 +72,22 @@ jobs:
           cache-to: type=gha,mode=max
 
       # Sanity check: load every Dagster definition (assets, jobs, schedules,
-      # sensors, resources) the same way the prod gRPC server does
-      # (`-m orchestration.definitions`). This builds the repository and runs
-      # resource-requirement checks, catching errors like a missing/renamed
-      # resource key BEFORE the broken image is pushed. Load-time only:
-      # dg.EnvVar resolves lazily, so no real secrets are needed; an ephemeral
-      # DAGSTER_HOME avoids touching the Postgres instance config baked into the
-      # image.
+      # sensors, resources). One module per invocation so each loads in-process —
+      # passing all at once would make it a multi-location workspace that spins up a
+      # gRPC server per location and waits up to 60s for each to shut down (the
+      # ML-heavy chatbot location stalls there).
+      # This sanity check catches definition errors BEFORE the broken image is pushed.
+      # Load-time only: dg.EnvVar resolves lazily, so no real secrets are needed;
+      # an ephemeral DAGSTER_HOME avoids requiring a Postgres instance.
       - name: Validate Dagster definitions
         run: |
           docker run --rm --entrypoint sh \
             "${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}" \
             -c 'mkdir -p /tmp/dagster_validate && \
-                DAGSTER_HOME=/tmp/dagster_validate \
-                dagster definitions validate -m orchestration.definitions'
+                export DAGSTER_HOME=/tmp/dagster_validate && \
+                dagster definitions validate -m orchestration.chatbot && \
+                dagster definitions validate -m orchestration.leaguepedia && \
+                dagster definitions validate -m orchestration.riot_api'
 
       # Only reached if validation passed. Image is already built and loaded
       # locally, so push the existing tags rather than rebuilding.

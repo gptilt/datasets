@@ -1,11 +1,22 @@
-# Tells dagster-webserver and dagster-daemon where the user-code lives.
+# Workspace loaded by dagster-webserver and dagster-daemon.
 #
-# Under OSS self-host the code runs as a long-lived gRPC server in its own
-# container (`dagster api grpc -m orchestration.definitions`), reachable by the
-# `dagster-user-code` hostname on the shared docker network. host/port must match
-# the container name and port the infra run script starts it with.
+# One code location = one long-lived gRPC container on the shared `dagster` network,
+# all running the same monorepo image with a different `-m orchestration.<location>` entrypoint
+# (so common packages stay shared — no per-location images).
+# `host` must match the user-code container name in infra (Quadlet); each listens on 4000.
+#
+# Adding a location = adding a block here + a matching `dagster-user-code-<name>.container`
+# in the infra repo.
 load_from:
   - grpc_server:
-      host: dagster-user-code
+      host: dagster-user-code-riot-api
       port: 4000
-      location_name: datasets
+      location_name: riot_api
+  - grpc_server:
+      host: dagster-user-code-leaguepedia
+      port: 4000
+      location_name: leaguepedia
+  - grpc_server:
+      host: dagster-user-code-chatbot
+      port: 4000
+      location_name: chatbot

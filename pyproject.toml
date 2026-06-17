@@ -82,9 +82,3 @@ ds-chatbot = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/orchestration"]
-
-[tool.dg]
-directory_type = "project"
-
-[tool.dg.project]
-root_module = "orchestration"
