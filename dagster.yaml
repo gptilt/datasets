@@ -18,13 +18,13 @@ storage:
   postgres:
     postgres_db:
       username:
-        env: DAGSTER_PG_USERNAME
+        env: POSTGRES_USER
       password:
-        env: DAGSTER_PG_PASSWORD
+        env: POSTGRES_PASSWORD
       hostname:
-        env: DAGSTER_PG_HOST
+        env: POSTGRES_HOST
       db_name:
-        env: DAGSTER_PG_DB
+        env: POSTGRES_DB
       port: 5432
 
 # --- Run queue ---------------------------------------------------------------
