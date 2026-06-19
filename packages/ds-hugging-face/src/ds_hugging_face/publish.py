@@ -87,6 +87,8 @@ def build_publish_definitions(ds: Dataset):
             repo_id=ds.repo_id,
             repo_type="dataset",
             commit_message="Update dataset card",
+            # Pass the token explicitly
+            token=hf.token,
         )
 
         return dg.MaterializeResult(
