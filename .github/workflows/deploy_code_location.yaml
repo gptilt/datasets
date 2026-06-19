@@ -59,15 +59,33 @@ jobs:
 
       # Build once, tag with the commit SHA (immutable) and the environment (prod/dev).
       # load (not push) so we can validate the image locally before it reaches ECR.
-      - name: Build image
+      - name: Build user-code image
         uses: docker/build-push-action@v4
         with:
           context: .
+          target: app
           push: false
           load: true
           tags: |
             ${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}
             ${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Control-plane image (webserver + daemon):
+      # code-free, so its digest is stable across code pushes
+      # and the UI/daemon are not cycled on every deploy.
+      # Separate `-cp` tags; reuses the app build's cached layers.
+      - name: Build control-plane image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          target: cp
+          push: false
+          load: true
+          tags: |
+            ${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}-cp
+            ${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}-cp
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -91,7 +109,9 @@ jobs:
 
       # Only reached if validation passed. Image is already built and loaded
       # locally, so push the existing tags rather than rebuilding.
-      - name: Push image to ECR
+      - name: Push images to ECR
         run: |
           docker push "${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}"
           docker push "${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}"
+          docker push "${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}-cp"
+          docker push "${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}-cp"

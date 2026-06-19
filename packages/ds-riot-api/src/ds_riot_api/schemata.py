@@ -1,3 +1,4 @@
+from ds_storage import IcebergTableSpec
 from pyiceberg.partitioning import PartitionSpec, PartitionField
 from pyiceberg.schema import Schema
 from pyiceberg.table.sorting import SortOrder, SortField, SortDirection, NullOrder
@@ -12,8 +13,8 @@ from pyiceberg.types import (
 )
 
 SCHEMATA = {
-    'fact_player_rank': {
-        'schema': Schema(
+    'fact_player_rank': IcebergTableSpec(
+        schema=Schema(
             NestedField(1, 'puuid', StringType(), required=True),
             NestedField(2, 'timestamp', TimestampType(), required=True),
             NestedField(3, "server", StringType(), required=True),
@@ -34,7 +35,7 @@ SCHEMATA = {
             # Primary Keys
             identifier_field_ids=[1, 2]
         ),
-        'partition_spec': PartitionSpec(
+        partition_spec=PartitionSpec(
             PartitionField(
                 source_id=3, # Points to 'server'
                 field_id=1000,
@@ -48,7 +49,7 @@ SCHEMATA = {
                 name="timestamp_day"
             )
         ),
-        'sort_order': SortOrder(
+        sort_order=SortOrder(
             SortField(
                 source_id=3, # Sort by Server first...
                 transform=IdentityTransform(),
@@ -68,5 +69,5 @@ SCHEMATA = {
                 null_order=NullOrder.NULLS_LAST
             )
         )
-    }
+    )
 }

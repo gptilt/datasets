@@ -201,8 +201,7 @@ def asset_clean_public_figures(
     df = pl.DataFrame(figures)
 
     leaguepedia_catalog_clean.create_table_if_not_exists(
-        "public_figures",
-        schema=SCHEMATA["public_figures"]["schema"],
+        "public_figures", SCHEMATA["public_figures"]
     )
     leaguepedia_catalog_clean.write_dataframe_to_table(
         "public_figures", df, mode="overwrite"
@@ -238,8 +237,7 @@ def asset_clean_teams(
     df = pl.DataFrame(rows)
 
     leaguepedia_catalog_clean.create_table_if_not_exists(
-        "teams",
-        schema=SCHEMATA["teams"]["schema"],
+        "teams", SCHEMATA["teams"]
     )
     leaguepedia_catalog_clean.write_dataframe_to_table("teams", df, mode="overwrite")
     return dg.MaterializeResult(
@@ -283,8 +281,7 @@ def asset_clean_entity_aliases(
     df = pl.DataFrame(aliases)
 
     leaguepedia_catalog_clean.create_table_if_not_exists(
-        "entity_aliases",
-        schema=SCHEMATA["entity_aliases"]["schema"],
+        "entity_aliases", SCHEMATA["entity_aliases"]
     )
     leaguepedia_catalog_clean.write_dataframe_to_table(
         "entity_aliases", df, mode="overwrite"

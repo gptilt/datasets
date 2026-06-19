@@ -6,6 +6,7 @@ will live in the future `curated` layer.
 Identifier fields are still declared so downstream readers can recognise primary keys,
 but they are not used by the writer (overwrite ignores merge keys).
 """
+from ds_storage import IcebergTableSpec
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
     DateType,
@@ -15,8 +16,8 @@ from pyiceberg.types import (
 
 
 SCHEMATA = {
-    'public_figures': {
-        'schema': Schema(
+    'public_figures': IcebergTableSpec(
+        schema=Schema(
             NestedField(1, 'person_id', StringType(), required=True),
             NestedField(2, 'canonical_name', StringType(), required=True),
             NestedField(3, 'display_name', StringType(), required=True),
@@ -35,11 +36,9 @@ SCHEMATA = {
         ),
         # No partition spec: the table is small (tens of thousands of rows) and is
         # overwritten in full each refresh — partitions would just add overhead.
-        'partition_spec': None,
-        'sort_order': None,
-    },
-    'entity_aliases': {
-        'schema': Schema(
+    ),
+    'entity_aliases': IcebergTableSpec(
+        schema=Schema(
             NestedField(1, 'alias', StringType(), required=True),
             NestedField(2, 'entity_id', StringType(), required=True),
             # 'person' | 'team' — the discriminator that lets one polymorphic lookup
@@ -54,11 +53,9 @@ SCHEMATA = {
             # entity_type is part of the key.
             identifier_field_ids=[1, 2, 3],
         ),
-        'partition_spec': None,
-        'sort_order': None,
-    },
-    'teams': {
-        'schema': Schema(
+    ),
+    'teams': IcebergTableSpec(
+        schema=Schema(
             NestedField(1, 'team_id', StringType(), required=True),
             NestedField(2, 'canonical_name', StringType(), required=True),
             NestedField(3, 'long_name', StringType(), required=False),
@@ -71,7 +68,5 @@ SCHEMATA = {
             NestedField(10, 'source_url', StringType(), required=True),
             identifier_field_ids=[1],
         ),
-        'partition_spec': None,
-        'sort_order': None,
-    },
+    ),
 }
