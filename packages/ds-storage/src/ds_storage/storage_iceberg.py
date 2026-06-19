@@ -6,14 +6,12 @@ import pyarrow as pa
 from pydantic import PrivateAttr
 from pyiceberg.catalog.rest import RestCatalog
 from pyiceberg.expressions import And, EqualTo, BooleanExpression
-from pyiceberg.partitioning import PartitionSpec
-from pyiceberg.schema import Schema
 from pyiceberg.table import DataScan, Table
-from pyiceberg.table.sorting import SortOrder
 import random
 import time
 from typing import Optional
 from .storage_base import Storage, NonEmptyStr
+from .table_spec import IcebergTableSpec
 
 
 DEFAULT_RETRIES = 5
@@ -43,7 +41,9 @@ class StorageIceberg(Storage):
 
 
     def namespace(self):
-        return f"{self.dataset}.{self.schema_name}"
+        # S3 Tables' Iceberg REST catalog supports only single-level namespaces,
+        # so the dataset and schema tiers are flattened into one component.
+        return f"{self.dataset}_{self.schema_name}"
 
 
     @property
@@ -58,14 +58,12 @@ class StorageIceberg(Storage):
         if self.rest_signing_region:
             properties["rest.sigv4-enabled"] = "true"
             properties["rest.signing-name"] = "s3tables"
-            properties["rest_signing_region"] = self.rest_signing_region
+            properties["rest.signing-region"] = self.rest_signing_region
 
         if self._catalog is None:
             self._catalog = RestCatalog(**properties)
 
-        parts = self.namespace().split(".")
-        for i in range(1, len(parts) + 1):
-            self._catalog.create_namespace_if_not_exists(tuple(parts[:i]))
+        self._catalog.create_namespace_if_not_exists((self.namespace(),))
 
         return self._catalog
 
@@ -77,20 +75,18 @@ class StorageIceberg(Storage):
     def create_table_if_not_exists(
         self,
         table_name: str,
-        schema: Schema = None,
-        partition_spec: PartitionSpec = None,
-        sort_order: SortOrder = None,
+        spec: IcebergTableSpec
     ) -> Table:
         full_name = self.full_table_name(table_name)
 
         if not self.catalog.table_exists(full_name):
             return self.catalog.create_table(
                 full_name,
-                schema=schema,
-                partition_spec=partition_spec,
-                sort_order=sort_order
+                schema=spec.schema,
+                partition_spec=spec.partition_spec,
+                sort_order=spec.sort_order,
             )
-        
+
         return self.catalog.load_table(full_name)
 
 

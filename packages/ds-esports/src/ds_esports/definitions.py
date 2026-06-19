@@ -14,7 +14,6 @@ from .partitions import partition_per_week
 job_esports_phase_1 = dg.define_asset_job(
     name="job_esports_phase_1",
     selection=dg.AssetSelection.groups("esports"),
-    partitions_def=partition_per_week,
 )
 
 
