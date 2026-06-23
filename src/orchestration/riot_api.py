@@ -4,8 +4,7 @@ Self-contained Dagster code location for the Riot Games API source platform.
 """
 import dagster as dg
 import ds_riot_api, ds_storage
-
-from .env import *
+from ds_runtime import *
 
 
 modules = [ds_riot_api]
@@ -23,7 +22,7 @@ sensors = [
 ]
 resources = {
     "riot_api_bucket": ds_storage.StorageS3(
-        root=DEPLOYMENT_NAME,
+        root=ENVIRONMENT,
         dataset='riot_api',
         schema_name='raw',
         tables=['league_entries'],
@@ -34,7 +33,7 @@ resources = {
         secret_access_key=BUCKET_SECRET_ACCESS_KEY,
     ),
     "catalog_clean": ds_storage.StorageIceberg(
-        root=DEPLOYMENT_NAME,
+        root=ENVIRONMENT,
         dataset='riot_api',
         schema_name='clean',
         tables=list(ds_riot_api.SCHEMATA.keys()),

@@ -17,6 +17,7 @@ members = [
     "ds-hugging-face",
     "ds-models",
     "ds-riot-api",
+    "ds-runtime",
     "ds-scribe",
     "ds-storage",
     "ds-tables",
@@ -772,6 +773,11 @@ requires-dist = [
 ]
 
 [[package]]
+name = "ds-runtime"
+version = "0.1.0"
+source = { editable = "packages/ds-runtime" }
+
+[[package]]
 name = "ds-scribe"
 version = "0.1.0"
 source = { editable = "packages/ds-scribe" }
@@ -953,6 +959,7 @@ dependencies = [
     { name = "ds-hugging-face", marker = "sys_platform == 'linux'" },
     { name = "ds-models", marker = "sys_platform == 'linux'" },
     { name = "ds-riot-api", marker = "sys_platform == 'linux'" },
+    { name = "ds-runtime", marker = "sys_platform == 'linux'" },
     { name = "ds-scribe", marker = "sys_platform == 'linux'" },
     { name = "ds-storage", marker = "sys_platform == 'linux'" },
     { name = "ds-tables", marker = "sys_platform == 'linux'" },
@@ -1004,6 +1011,7 @@ requires-dist = [
     { name = "ds-hugging-face", editable = "packages/ds-hugging-face" },
     { name = "ds-models", editable = "packages/ds-models" },
     { name = "ds-riot-api", editable = "packages/ds-riot-api" },
+    { name = "ds-runtime", editable = "packages/ds-runtime" },
     { name = "ds-scribe", editable = "packages/ds-scribe" },
     { name = "ds-storage", editable = "packages/ds-storage" },
     { name = "ds-tables", editable = "packages/ds-tables" },

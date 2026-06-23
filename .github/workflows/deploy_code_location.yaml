@@ -69,8 +69,10 @@ jobs:
           tags: |
             ${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}
             ${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # ECR registry cache (no 10 GB GHA cap; reliable for the multi-GB ML image).
+          # image-manifest + oci-mediatypes are required for ECR to accept the cache.
+          cache-from: type=registry,ref=${{ env.IMAGE_REGISTRY }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REGISTRY }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
 
       # Control-plane image (webserver + daemon):
       # code-free, so its digest is stable across code pushes
@@ -86,8 +88,9 @@ jobs:
           tags: |
             ${{ env.IMAGE_REGISTRY }}:${{ env.IMAGE_TAG }}-cp
             ${{ env.IMAGE_REGISTRY }}:${{ env.ENVIRONMENT }}-cp
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Separate cache ref from the app image (smaller, code-free).
+          cache-from: type=registry,ref=${{ env.IMAGE_REGISTRY }}:buildcache-cp
+          cache-to: type=registry,ref=${{ env.IMAGE_REGISTRY }}:buildcache-cp,mode=max,image-manifest=true,oci-mediatypes=true
 
       # Sanity check: load every Dagster definition (assets, jobs, schedules,
       # sensors, resources). One module per invocation so each loads in-process —
