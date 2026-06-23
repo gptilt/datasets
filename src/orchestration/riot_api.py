@@ -5,7 +5,7 @@ Self-contained Dagster code location for the Riot Games API source platform.
 import dagster as dg
 import ds_riot_api, ds_storage
 
-from .constants import *
+from .env import *
 
 
 modules = [ds_riot_api]
