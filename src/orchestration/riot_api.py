@@ -3,8 +3,9 @@
 Self-contained Dagster code location for the Riot Games API source platform.
 """
 import dagster as dg
-from ds_runtime import DEPLOYMENT_NAME
 import ds_riot_api, ds_storage
+
+from .env import *
 
 
 modules = [ds_riot_api]
@@ -27,19 +28,19 @@ resources = {
         schema_name='raw',
         tables=['league_entries'],
         file_extension='parquet',
-        bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
-        bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
-        access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
-        secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
+        bucket_endpoint=BUCKET_ENDPOINT,
+        bucket_name=BUCKET_NAME,
+        access_key_id=BUCKET_ACCESS_KEY_ID,
+        secret_access_key=BUCKET_SECRET_ACCESS_KEY,
     ),
     "catalog_clean": ds_storage.StorageIceberg(
         root=DEPLOYMENT_NAME,
         dataset='riot_api',
         schema_name='clean',
         tables=list(ds_riot_api.SCHEMATA.keys()),
-        warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
-        catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
-        rest_signing_region=dg.EnvVar("AWS_REGION"),
+        warehouse_name=CATALOG_WAREHOUSE_NAME,
+        catalog_uri=CATALOG_ENDPOINT,
+        rest_signing_region=AWS_REGION,
     ),
 }
 

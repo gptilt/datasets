@@ -37,7 +37,6 @@ dependencies = [
     "ds-hugging-face",
     "ds-models",
     "ds-riot-api",
-    "ds-runtime",
     "ds-scribe",
     "ds-storage",
     "ds-tables",
@@ -74,7 +73,6 @@ ds-esports = { workspace = true }
 ds-hugging-face = { workspace = true }
 ds-models = { workspace = true }
 ds-riot-api = { workspace = true }
-ds-runtime = { workspace = true }
 ds-scribe = { workspace = true }
 ds-storage = { workspace = true }
 ds-tables = { workspace = true }

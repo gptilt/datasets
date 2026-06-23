@@ -21,6 +21,15 @@ COPY pyproject.toml uv.lock ./
 # ── app (user-code image) ─────────────────────────────────────────────────────
 FROM base AS app
 ARG IMAGE_SOURCE
+# System deps.
+# - ffmpeg: required by the FFmpegVideoConvertor postprocessor,
+#   and by whisperx to decode audio;
+# - deno: the JavaScript runtime yt-dlp uses for YouTube extraction (nsig / PO tokens).
+# Installed before the code copy so it caches independently of source changes.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
 # Copy workspace packages and the root source code
 COPY packages/ ./packages/
 COPY src/ ./src/

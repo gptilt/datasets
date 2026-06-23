@@ -101,7 +101,6 @@ Most pipelines require a number of secrets that should be available at runtime a
 - `ds-esports`: For building assets from [Leaguepedia](https://lol.fandom.com/) — esports public figures, teams, and a unified alias index. 🏆
 - `ds-hugging-face`: For publishing datasets to [🤗 Hugging Face](https://huggingface.co/gptilt).
 - `ds-riot-api`: For building assets with provenance from the [Riot Games API](https://developer.riotgames.com/apis). 🌐
-- `ds-runtime`: Runtime variables and environment context. ⏲️
 - `ds-scribe`: For transcribing audio to text. 🖊️
 - `ds-storage`: Custom storage interface. Maintenance limited to usage. 🏭
 - `ds-tables`: TBD.

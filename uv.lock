@@ -17,7 +17,6 @@ members = [
     "ds-hugging-face",
     "ds-models",
     "ds-riot-api",
-    "ds-runtime",
     "ds-scribe",
     "ds-storage",
     "ds-tables",
@@ -647,7 +646,6 @@ version = "0.1.0"
 source = { editable = "packages/ds-chatbot" }
 dependencies = [
     { name = "ds-models", marker = "sys_platform == 'linux'" },
-    { name = "ds-runtime", marker = "sys_platform == 'linux'" },
     { name = "ds-scribe", marker = "sys_platform == 'linux'" },
     { name = "polars", marker = "sys_platform == 'linux'" },
     { name = "yt-dlp", marker = "sys_platform == 'linux'" },
@@ -656,7 +654,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ds-models", editable = "packages/ds-models" },
-    { name = "ds-runtime", editable = "packages/ds-runtime" },
     { name = "ds-scribe", editable = "packages/ds-scribe" },
     { name = "polars" },
     { name = "yt-dlp" },
@@ -773,11 +770,6 @@ requires-dist = [
     { name = "pyiceberg" },
     { name = "requests" },
 ]
-
-[[package]]
-name = "ds-runtime"
-version = "0.1.0"
-source = { editable = "packages/ds-runtime" }
 
 [[package]]
 name = "ds-scribe"
@@ -961,7 +953,6 @@ dependencies = [
     { name = "ds-hugging-face", marker = "sys_platform == 'linux'" },
     { name = "ds-models", marker = "sys_platform == 'linux'" },
     { name = "ds-riot-api", marker = "sys_platform == 'linux'" },
-    { name = "ds-runtime", marker = "sys_platform == 'linux'" },
     { name = "ds-scribe", marker = "sys_platform == 'linux'" },
     { name = "ds-storage", marker = "sys_platform == 'linux'" },
     { name = "ds-tables", marker = "sys_platform == 'linux'" },
@@ -1013,7 +1004,6 @@ requires-dist = [
     { name = "ds-hugging-face", editable = "packages/ds-hugging-face" },
     { name = "ds-models", editable = "packages/ds-models" },
     { name = "ds-riot-api", editable = "packages/ds-riot-api" },
-    { name = "ds-runtime", editable = "packages/ds-runtime" },
     { name = "ds-scribe", editable = "packages/ds-scribe" },
     { name = "ds-storage", editable = "packages/ds-storage" },
     { name = "ds-tables", editable = "packages/ds-tables" },
