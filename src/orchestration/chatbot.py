@@ -8,8 +8,7 @@ with the submodule present it loads the full chatbot definitions.
 """
 import dagster as dg
 import ds_storage
-
-from .env import *
+from ds_runtime import *
 
 
 modules = []
@@ -18,7 +17,7 @@ schedules = []
 sensors = []
 resources = {
     "document_bucket": ds_storage.StorageS3(
-        root=DEPLOYMENT_NAME,
+        root=ENVIRONMENT,
         dataset='document',
         schema_name='stg',
         tables=['transcripts'],

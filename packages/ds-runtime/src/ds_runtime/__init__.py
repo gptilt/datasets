@@ -1,6 +1,9 @@
+"""
+Shared runtime configuration: environment variables resolved at runtime.
+"""
 import dagster as dg
 
-DEPLOYMENT_NAME = dg.EnvVar("DEPLOYMENT_NAME")
+ENVIRONMENT = dg.EnvVar("ENVIRONMENT")
 
 BUCKET_ENDPOINT = dg.EnvVar("S3_BUCKET_ENDPOINT")
 BUCKET_NAME = dg.EnvVar("S3_BUCKET_NAME")

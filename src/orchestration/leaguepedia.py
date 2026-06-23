@@ -5,8 +5,7 @@ and the job that publishes leaguepedia tables to HuggingFace.
 """
 import dagster as dg
 import ds_esports, ds_hugging_face, ds_storage
-
-from .env import *
+from ds_runtime import *
 
 
 modules = [ds_esports, ds_hugging_face]
@@ -20,7 +19,7 @@ schedules = [
 ]
 resources = {
     "leaguepedia_bucket": ds_storage.StorageS3(
-        root=DEPLOYMENT_NAME,
+        root=ENVIRONMENT,
         dataset='leaguepedia',
         schema_name='raw',
         tables=['players', 'player_redirects', 'teams'],
@@ -35,7 +34,7 @@ resources = {
         password=FANDOM_PASSWORD,
     ),
     "leaguepedia_catalog_clean": ds_storage.StorageIceberg(
-        root=DEPLOYMENT_NAME,
+        root=ENVIRONMENT,
         dataset='leaguepedia',
         schema_name='clean',
         tables=list(ds_esports.SCHEMATA.keys()),
