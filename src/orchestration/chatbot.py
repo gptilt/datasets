@@ -7,8 +7,9 @@ with just `document_bucket` and no assets/jobs;
 with the submodule present it loads the full chatbot definitions.
 """
 import dagster as dg
-from ds_runtime import DEPLOYMENT_NAME
 import ds_storage
+
+from .constants import *
 
 
 modules = []
@@ -22,10 +23,10 @@ resources = {
         schema_name='stg',
         tables=['transcripts'],
         file_extension='parquet',
-        bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
-        bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
-        access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
-        secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
+        bucket_endpoint=BUCKET_ENDPOINT,
+        bucket_name=BUCKET_NAME,
+        access_key_id=BUCKET_ACCESS_KEY_ID,
+        secret_access_key=BUCKET_SECRET_ACCESS_KEY,
     ),
 }
 

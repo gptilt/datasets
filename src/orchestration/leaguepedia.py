@@ -4,8 +4,9 @@ Self-contained Dagster code location for the Leaguepedia (Fandom/Cargo) jobs
 and the job that publishes leaguepedia tables to HuggingFace.
 """
 import dagster as dg
-from ds_runtime import DEPLOYMENT_NAME
 import ds_esports, ds_hugging_face, ds_storage
+
+from .constants import *
 
 
 modules = [ds_esports, ds_hugging_face]
@@ -24,26 +25,26 @@ resources = {
         schema_name='raw',
         tables=['players', 'player_redirects', 'teams'],
         file_extension='json',
-        bucket_endpoint=dg.EnvVar("S3_BUCKET_ENDPOINT"),
-        bucket_name=dg.EnvVar("S3_BUCKET_NAME"),
-        access_key_id=dg.EnvVar("S3_BUCKET_ACCESS_KEY_ID"),
-        secret_access_key=dg.EnvVar("S3_BUCKET_SECRET_ACCESS_KEY"),
+        bucket_endpoint=BUCKET_ENDPOINT,
+        bucket_name=BUCKET_NAME,
+        access_key_id=BUCKET_ACCESS_KEY_ID,
+        secret_access_key=BUCKET_SECRET_ACCESS_KEY,
     ),
     "leaguepedia_cargo": ds_esports.CargoClient(
-        username=dg.EnvVar("FANDOM_USERNAME"),
-        password=dg.EnvVar("FANDOM_PASSWORD"),
+        username=FANDOM_USERNAME,
+        password=FANDOM_PASSWORD,
     ),
     "leaguepedia_catalog_clean": ds_storage.StorageIceberg(
         root=DEPLOYMENT_NAME,
         dataset='leaguepedia',
         schema_name='clean',
         tables=list(ds_esports.SCHEMATA.keys()),
-        warehouse_name=dg.EnvVar("CATALOG_WAREHOUSE_NAME"),
-        catalog_uri=dg.EnvVar("CATALOG_ENDPOINT"),
-        rest_signing_region=dg.EnvVar("AWS_REGION"),
+        warehouse_name=CATALOG_WAREHOUSE_NAME,
+        catalog_uri=CATALOG_ENDPOINT,
+        rest_signing_region=AWS_REGION,
     ),
     "hugging_face_hub": ds_hugging_face.HuggingFaceHub(
-        token=dg.EnvVar("HUGGING_FACE_TOKEN"),
+        token=HUGGING_FACE_TOKEN,
     ),
 }
 
