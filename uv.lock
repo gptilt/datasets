@@ -15,6 +15,7 @@ members = [
     "ds-documents",
     "ds-esports",
     "ds-hugging-face",
+    "ds-leaguepedia",
     "ds-models",
     "ds-riot-api",
     "ds-runtime",
@@ -644,7 +645,7 @@ wheels = [
 [[package]]
 name = "ds-chatbot"
 version = "0.1.0"
-source = { editable = "packages/ds-chatbot" }
+source = { editable = "pipelines/ds-chatbot" }
 dependencies = [
     { name = "ds-models", marker = "sys_platform == 'linux'" },
     { name = "ds-scribe", marker = "sys_platform == 'linux'" },
@@ -654,8 +655,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ds-models", editable = "packages/ds-models" },
-    { name = "ds-scribe", editable = "packages/ds-scribe" },
+    { name = "ds-models", editable = "library/ds-models" },
+    { name = "ds-scribe", editable = "library/ds-scribe" },
     { name = "polars" },
     { name = "yt-dlp" },
 ]
@@ -663,7 +664,7 @@ requires-dist = [
 [[package]]
 name = "ds-common"
 version = "0.1.0"
-source = { editable = "packages/ds-common" }
+source = { editable = "library/ds-common" }
 dependencies = [
     { name = "pyarrow", marker = "sys_platform == 'linux'" },
     { name = "pyiceberg", marker = "sys_platform == 'linux'" },
@@ -680,35 +681,27 @@ requires-dist = [
 [[package]]
 name = "ds-documents"
 version = "0.1.0"
-source = { editable = "packages/ds-documents" }
+source = { editable = "pipelines/ds-documents" }
 
 [[package]]
 name = "ds-esports"
 version = "0.1.0"
-source = { editable = "packages/ds-esports" }
+source = { editable = "library/ds-esports" }
 dependencies = [
-    { name = "ds-common", marker = "sys_platform == 'linux'" },
-    { name = "ds-storage", marker = "sys_platform == 'linux'" },
-    { name = "mwcleric", marker = "sys_platform == 'linux'" },
     { name = "polars", marker = "sys_platform == 'linux'" },
-    { name = "pyarrow", marker = "sys_platform == 'linux'" },
-    { name = "pyiceberg", marker = "sys_platform == 'linux'" },
+    { name = "pydantic", marker = "sys_platform == 'linux'" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ds-common", editable = "packages/ds-common" },
-    { name = "ds-storage", editable = "packages/ds-storage" },
-    { name = "mwcleric" },
     { name = "polars" },
-    { name = "pyarrow" },
-    { name = "pyiceberg" },
+    { name = "pydantic" },
 ]
 
 [[package]]
 name = "ds-hugging-face"
 version = "0.1.0"
-source = { editable = "packages/ds-hugging-face" }
+source = { editable = "pipelines/ds-hugging-face" }
 dependencies = [
     { name = "dagster", marker = "sys_platform == 'linux'" },
     { name = "datasets", marker = "sys_platform == 'linux'" },
@@ -722,16 +715,39 @@ dependencies = [
 requires-dist = [
     { name = "dagster" },
     { name = "datasets" },
-    { name = "ds-storage", editable = "packages/ds-storage" },
+    { name = "ds-storage", editable = "library/ds-storage" },
     { name = "huggingface-hub" },
     { name = "jinja2" },
     { name = "polars" },
 ]
 
 [[package]]
+name = "ds-leaguepedia"
+version = "0.1.0"
+source = { editable = "pipelines/ds-leaguepedia" }
+dependencies = [
+    { name = "ds-common", marker = "sys_platform == 'linux'" },
+    { name = "ds-storage", marker = "sys_platform == 'linux'" },
+    { name = "mwcleric", marker = "sys_platform == 'linux'" },
+    { name = "polars", marker = "sys_platform == 'linux'" },
+    { name = "pyarrow", marker = "sys_platform == 'linux'" },
+    { name = "pyiceberg", marker = "sys_platform == 'linux'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ds-common", editable = "library/ds-common" },
+    { name = "ds-storage", editable = "library/ds-storage" },
+    { name = "mwcleric" },
+    { name = "polars" },
+    { name = "pyarrow" },
+    { name = "pyiceberg" },
+]
+
+[[package]]
 name = "ds-models"
 version = "0.1.0"
-source = { editable = "packages/ds-models" }
+source = { editable = "library/ds-models" }
 dependencies = [
     { name = "accelerate", marker = "sys_platform == 'linux'" },
     { name = "torch", marker = "sys_platform == 'linux'" },
@@ -748,7 +764,7 @@ requires-dist = [
 [[package]]
 name = "ds-riot-api"
 version = "0.1.0"
-source = { editable = "packages/ds-riot-api" }
+source = { editable = "pipelines/ds-riot-api" }
 dependencies = [
     { name = "aiohttp", marker = "sys_platform == 'linux'" },
     { name = "dorans", marker = "sys_platform == 'linux'" },
@@ -764,8 +780,8 @@ dependencies = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.8.1" },
     { name = "dorans", specifier = ">=0.2.5" },
-    { name = "ds-common", editable = "packages/ds-common" },
-    { name = "ds-storage", editable = "packages/ds-storage" },
+    { name = "ds-common", editable = "library/ds-common" },
+    { name = "ds-storage", editable = "library/ds-storage" },
     { name = "polars" },
     { name = "pyarrow" },
     { name = "pyiceberg" },
@@ -775,12 +791,12 @@ requires-dist = [
 [[package]]
 name = "ds-runtime"
 version = "0.1.0"
-source = { editable = "packages/ds-runtime" }
+source = { editable = "pipelines/ds-runtime" }
 
 [[package]]
 name = "ds-scribe"
 version = "0.1.0"
-source = { editable = "packages/ds-scribe" }
+source = { editable = "library/ds-scribe" }
 dependencies = [
     { name = "torch", marker = "sys_platform == 'linux'" },
     { name = "whisperx", marker = "sys_platform == 'linux'" },
@@ -795,7 +811,7 @@ requires-dist = [
 [[package]]
 name = "ds-storage"
 version = "0.1.0"
-source = { editable = "packages/ds-storage" }
+source = { editable = "library/ds-storage" }
 dependencies = [
     { name = "boto3", marker = "sys_platform == 'linux'" },
     { name = "duckdb", marker = "sys_platform == 'linux'" },
@@ -816,7 +832,7 @@ requires-dist = [
 [[package]]
 name = "ds-tables"
 version = "0.1.0"
-source = { editable = "packages/ds-tables" }
+source = { editable = "library/ds-tables" }
 
 [[package]]
 name = "duckdb"
@@ -957,6 +973,7 @@ dependencies = [
     { name = "ds-documents", marker = "sys_platform == 'linux'" },
     { name = "ds-esports", marker = "sys_platform == 'linux'" },
     { name = "ds-hugging-face", marker = "sys_platform == 'linux'" },
+    { name = "ds-leaguepedia", marker = "sys_platform == 'linux'" },
     { name = "ds-models", marker = "sys_platform == 'linux'" },
     { name = "ds-riot-api", marker = "sys_platform == 'linux'" },
     { name = "ds-runtime", marker = "sys_platform == 'linux'" },
@@ -1004,17 +1021,18 @@ requires-dist = [
     { name = "cryptography", specifier = ">=46.0.7" },
     { name = "dagster", specifier = ">=1.13.1" },
     { name = "dorans", specifier = ">=0.2.6" },
-    { name = "ds-chatbot", marker = "extra == 'private'", editable = "packages/ds-chatbot" },
-    { name = "ds-common", editable = "packages/ds-common" },
-    { name = "ds-documents", editable = "packages/ds-documents" },
-    { name = "ds-esports", editable = "packages/ds-esports" },
-    { name = "ds-hugging-face", editable = "packages/ds-hugging-face" },
-    { name = "ds-models", editable = "packages/ds-models" },
-    { name = "ds-riot-api", editable = "packages/ds-riot-api" },
-    { name = "ds-runtime", editable = "packages/ds-runtime" },
-    { name = "ds-scribe", editable = "packages/ds-scribe" },
-    { name = "ds-storage", editable = "packages/ds-storage" },
-    { name = "ds-tables", editable = "packages/ds-tables" },
+    { name = "ds-chatbot", marker = "extra == 'private'", editable = "pipelines/ds-chatbot" },
+    { name = "ds-common", editable = "library/ds-common" },
+    { name = "ds-documents", editable = "pipelines/ds-documents" },
+    { name = "ds-esports", editable = "library/ds-esports" },
+    { name = "ds-hugging-face", editable = "pipelines/ds-hugging-face" },
+    { name = "ds-leaguepedia", editable = "pipelines/ds-leaguepedia" },
+    { name = "ds-models", editable = "library/ds-models" },
+    { name = "ds-riot-api", editable = "pipelines/ds-riot-api" },
+    { name = "ds-runtime", editable = "pipelines/ds-runtime" },
+    { name = "ds-scribe", editable = "library/ds-scribe" },
+    { name = "ds-storage", editable = "library/ds-storage" },
+    { name = "ds-tables", editable = "library/ds-tables" },
     { name = "duckdb", specifier = ">=1.1" },
     { name = "lightning", specifier = "==2.6.1" },
     { name = "mako", specifier = ">=1.3.11" },

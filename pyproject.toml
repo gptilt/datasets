@@ -35,6 +35,7 @@ dependencies = [
     "ds-documents",
     "ds-esports",
     "ds-hugging-face",
+    "ds-leaguepedia",
     "ds-models",
     "ds-riot-api",
     "ds-runtime",
@@ -65,13 +66,17 @@ server = [
 environments = ["sys_platform == 'linux'"]
 
 [tool.uv.workspace]
-members = ["packages/*"]
+# Two tiers:
+# - Reusable libraries (publishable per-package);
+# - Pipelines that own a Dagster code location and produce datasets.
+members = ["library/*", "pipelines/*"]
 
 [tool.uv.sources]
 ds-common = { workspace = true }
 ds-documents = { workspace = true }
 ds-esports = { workspace = true }
 ds-hugging-face = { workspace = true }
+ds-leaguepedia = { workspace = true }
 ds-models = { workspace = true }
 ds-riot-api = { workspace = true }
 ds-runtime = { workspace = true }
