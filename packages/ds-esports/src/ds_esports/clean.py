@@ -43,6 +43,14 @@ def _is_truthy(value: str | None) -> bool:
     return str(value).strip().lower() in {"1", "yes", "true"}
 
 
+def _split_list(value: str | None) -> list[str] | None:
+    """Cargo List fields are returned as comma-joined strings; split into a list.
+    None/'' -> None. Champion/entity names never contain commas, so a plain split is safe."""
+    if not value:
+        return None
+    return [item for item in value.split(",") if item]
+
+
 # ---- public_figures ----------------------------------------------------------------
 
 
@@ -106,6 +114,103 @@ def _build_teams(teams: list[dict] | dict) -> list[dict]:
             "is_disbanded": "Yes" if _is_truthy(team.get("IsDisbanded")) else "No",
             "source": "leaguepedia",
             "source_url": _wiki_url(team_id),
+        })
+    return rows
+
+
+# ---- games -------------------------------------------------------------------------
+
+
+def _build_games(games: list[dict] | dict) -> list[dict]:
+    """
+    Fan a Cargo `ScoreboardGames` snapshot into `games` rows, deduped on `GameId`.
+    Team1 is blue side, Team2 red (Leaguepedia convention); picks/bans are kept as the
+    raw comma-separated strings Leaguepedia provides (consumers split).
+    """
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for g in games:
+        game_id = g.get("GameId")
+        if not game_id or game_id in seen:
+            continue
+        seen.add(game_id)
+        tournament = g.get("OverviewPage")
+        rows.append({
+            "game_id": game_id,
+            "match_id": g.get("MatchId"),
+            "tournament": tournament,
+            # Cargo returns multi-word field names with spaces, not underscores.
+            "game_number": g.get("N GameInMatch"),
+            "datetime_utc": g.get("DateTime UTC"),
+            "patch": g.get("Patch"),
+            "team_blue": g.get("Team1"),
+            "team_red": g.get("Team2"),
+            "winner": g.get("WinTeam"),
+            "picks_blue": _split_list(g.get("Team1Picks")),
+            "picks_red": _split_list(g.get("Team2Picks")),
+            "bans_blue": _split_list(g.get("Team1Bans")),
+            "bans_red": _split_list(g.get("Team2Bans")),
+            "gamelength": g.get("Gamelength"),
+            "riot_game_id": g.get("RiotPlatformGameId"),
+            "vod": g.get("VOD"),
+            "source_url": _wiki_url(tournament) if tournament else None,
+        })
+    return rows
+
+
+# ---- tournaments -------------------------------------------------------------------
+
+
+def _build_tournaments(tournaments: list[dict] | dict) -> list[dict]:
+    """Fan a Cargo `Tournaments` snapshot into `tournaments` rows, deduped on OverviewPage."""
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for t in tournaments:
+        tournament_id = t.get("OverviewPage")
+        if not tournament_id or tournament_id in seen:
+            continue
+        seen.add(tournament_id)
+        rows.append({
+            "tournament_id": tournament_id,
+            "name": t.get("Name"),
+            "league": t.get("League"),
+            "region": t.get("Region"),
+            "split": t.get("Split"),
+            "year": t.get("Year"),
+            "tier": t.get("TournamentLevel"),
+            "date_start": t.get("DateStart"),
+            "date_end": t.get("Date"),
+            "source_url": _wiki_url(tournament_id),
+        })
+    return rows
+
+
+# ---- matches -----------------------------------------------------------------------
+
+
+def _build_matches(matches: list[dict] | dict) -> list[dict]:
+    """Fan a Cargo `MatchSchedule` snapshot into `matches` (series) rows, deduped on MatchId."""
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for m in matches:
+        match_id = m.get("MatchId")
+        if not match_id or match_id in seen:
+            continue
+        seen.add(match_id)
+        tournament = m.get("OverviewPage")
+        rows.append({
+            "match_id": match_id,
+            "tournament": tournament,
+            "tab": m.get("Tab"),
+            "team1": m.get("Team1"),
+            "team2": m.get("Team2"),
+            "team1_score": m.get("Team1Score"),
+            "team2_score": m.get("Team2Score"),
+            "winner": m.get("Winner"),
+            "best_of": m.get("BestOf"),
+            # Cargo returns the multi-word field name with a space, not an underscore.
+            "datetime_utc": m.get("DateTime UTC"),
+            "source_url": _wiki_url(tournament) if tournament else None,
         })
     return rows
 
@@ -240,6 +345,94 @@ def asset_clean_teams(
         "teams", SCHEMATA["teams"]
     )
     leaguepedia_catalog_clean.write_dataframe_to_table("teams", df, mode="overwrite")
+    return dg.MaterializeResult(
+        metadata={
+            "row_count": len(rows),
+            "partition": dg.MetadataValue.json(partition),
+        }
+    )
+
+
+@dg.asset(
+    name="clean_esports_games",
+    group_name="esports",
+    partitions_def=partition_per_week,
+    deps=["raw_esports_leaguepedia_scoreboard_games"],
+)
+def asset_clean_games(
+    context: dg.AssetExecutionContext,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_catalog_clean: StorageIceberg,
+):
+    """
+    Per-game competitive record — one row per game. The grounding payload: a video
+    identified to a game inherits its patch and champion comps. Overwrites the Iceberg
+    target with this partition's snapshot.
+    """
+    games, partition = _read_partition(
+        leaguepedia_bucket, "scoreboard_games", context.partition_key
+    )
+    rows = _build_games(games)
+    df = pl.DataFrame(rows)
+
+    leaguepedia_catalog_clean.create_table_if_not_exists("games", SCHEMATA["games"])
+    leaguepedia_catalog_clean.write_dataframe_to_table("games", df, mode="overwrite")
+    return dg.MaterializeResult(
+        metadata={
+            "row_count": len(rows),
+            "partition": dg.MetadataValue.json(partition),
+        }
+    )
+
+
+@dg.asset(
+    name="clean_esports_tournaments",
+    group_name="esports",
+    partitions_def=partition_per_week,
+    deps=["raw_esports_leaguepedia_tournaments"],
+)
+def asset_clean_tournaments(
+    context: dg.AssetExecutionContext,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_catalog_clean: StorageIceberg,
+):
+    """One row per tournament. Overwrites the Iceberg target with this partition's snapshot."""
+    tournaments, partition = _read_partition(
+        leaguepedia_bucket, "tournaments", context.partition_key
+    )
+    rows = _build_tournaments(tournaments)
+    df = pl.DataFrame(rows)
+
+    leaguepedia_catalog_clean.create_table_if_not_exists("tournaments", SCHEMATA["tournaments"])
+    leaguepedia_catalog_clean.write_dataframe_to_table("tournaments", df, mode="overwrite")
+    return dg.MaterializeResult(
+        metadata={
+            "row_count": len(rows),
+            "partition": dg.MetadataValue.json(partition),
+        }
+    )
+
+
+@dg.asset(
+    name="clean_esports_matches",
+    group_name="esports",
+    partitions_def=partition_per_week,
+    deps=["raw_esports_leaguepedia_match_schedule"],
+)
+def asset_clean_matches(
+    context: dg.AssetExecutionContext,
+    leaguepedia_bucket: StorageS3,
+    leaguepedia_catalog_clean: StorageIceberg,
+):
+    """One row per match/series. Overwrites the Iceberg target with this partition's snapshot."""
+    matches, partition = _read_partition(
+        leaguepedia_bucket, "match_schedule", context.partition_key
+    )
+    rows = _build_matches(matches)
+    df = pl.DataFrame(rows)
+
+    leaguepedia_catalog_clean.create_table_if_not_exists("matches", SCHEMATA["matches"])
+    leaguepedia_catalog_clean.write_dataframe_to_table("matches", df, mode="overwrite")
     return dg.MaterializeResult(
         metadata={
             "row_count": len(rows),
