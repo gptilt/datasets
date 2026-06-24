@@ -12,17 +12,22 @@ modules = [ds_esports, ds_hugging_face]
 jobs = [
     ds_esports.job_esports_phase_1,
     ds_hugging_face.job_publish_esports,
+    ds_hugging_face.job_publish_esports_matches,
 ]
 schedules = [
     ds_esports.schedule_esports_phase_1,
     ds_hugging_face.schedule_publish_esports,
+    ds_hugging_face.schedule_publish_esports_matches,
 ]
 resources = {
     "leaguepedia_bucket": ds_storage.StorageS3(
         root=ENVIRONMENT,
         dataset='leaguepedia',
         schema_name='raw',
-        tables=['players', 'player_redirects', 'teams'],
+        tables=[
+            'players', 'player_redirects', 'teams',
+            'scoreboard_games', 'tournaments', 'match_schedule'
+        ],
         file_extension='json',
         bucket_endpoint=BUCKET_ENDPOINT,
         bucket_name=BUCKET_NAME,

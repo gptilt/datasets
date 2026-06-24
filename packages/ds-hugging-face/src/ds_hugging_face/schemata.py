@@ -33,7 +33,7 @@ class Dataset:
         return self.repo_id.split("/", 1)[1]
 
 
-ESPORTS = Dataset(
+ESPORTS_ENTITIES = Dataset(
     slug="esports",
     repo_id="gptilt/lol-esports-entities",
     license="cc-by-sa-3.0",
@@ -69,4 +69,29 @@ ESPORTS = Dataset(
     },
     catalog_resource_key="leaguepedia_catalog_clean",
     deps=["clean_public_figures", "clean_teams", "clean_entity_aliases"],
+)
+
+
+ESPORTS_MATCHES = Dataset(
+    slug="esports_matches",
+    repo_id="gptilt/lol-esports-matches",
+    license="cc-by-sa-3.0",
+    pretty_name="League of Legends Esports Matches",
+    dataset_summary=(
+        "A periodically-refreshed record of professional League of Legends "
+        "**matches** and **games** — patches, champion picks/bans, teams, results, "
+        "and tournament metadata. "
+        "Built from Leaguepedia (lol.fandom.com) via its structured Cargo query API."
+    ),
+    purpose=(
+        "It provides a clean, canonical record of competitive games for analysis "
+        "and for linking broadcast/VOD commentary back to the specific game it discusses."
+    ),
+    tables={
+        "games": "One row per competitive game: patch, picks/bans, teams, result, IDs.",
+        "tournaments": "One row per tournament: name, league, region, split, year, tier, dates.",
+        "matches": "One row per match/series: teams, series score, best-of, tournament.",
+    },
+    catalog_resource_key="leaguepedia_catalog_clean",
+    deps=["clean_esports_games", "clean_esports_tournaments", "clean_esports_matches"],
 )
