@@ -10,6 +10,7 @@ from ds_storage import IcebergTableSpec
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
     DateType,
+    ListType,
     NestedField,
     StringType,
 )
@@ -66,6 +67,70 @@ SCHEMATA = {
             NestedField(8, 'is_disbanded', StringType(), required=False),
             NestedField(9, 'source', StringType(), required=True),
             NestedField(10, 'source_url', StringType(), required=True),
+            identifier_field_ids=[1],
+        ),
+    ),
+    # One row per competitive game (Leaguepedia `ScoreboardGames`). This is the
+    # grounding payload: a video identified to a game inherits its patch + comps.
+    # Scalar fields are strings (the "keep as string, fan out in curated" philosophy);
+    # picks/bans are lists, matching Leaguepedia's own List typing.
+    'games': IcebergTableSpec(
+        schema=Schema(
+            NestedField(1, 'game_id', StringType(), required=True),
+            NestedField(2, 'match_id', StringType(), required=False),
+            NestedField(3, 'tournament', StringType(), required=False),
+            NestedField(4, 'game_number', StringType(), required=False),
+            NestedField(5, 'datetime_utc', StringType(), required=False),
+            NestedField(6, 'patch', StringType(), required=False),
+            # Team1 = blue side, Team2 = red side (Leaguepedia convention).
+            NestedField(7, 'team_blue', StringType(), required=False),
+            NestedField(8, 'team_red', StringType(), required=False),
+            NestedField(9, 'winner', StringType(), required=False),
+            # Cargo List fields — champion names, role-ordered (top→jungle→mid→bot→
+            # support) for picks. Stored as lists, the source's own typing.
+            NestedField(10, 'picks_blue', ListType(element_id=101, element_type=StringType(), element_required=False), required=False),
+            NestedField(11, 'picks_red', ListType(element_id=102, element_type=StringType(), element_required=False), required=False),
+            NestedField(12, 'bans_blue', ListType(element_id=103, element_type=StringType(), element_required=False), required=False),
+            NestedField(13, 'bans_red', ListType(element_id=104, element_type=StringType(), element_required=False), required=False),
+            NestedField(14, 'gamelength', StringType(), required=False),
+            # Riot's platform game id — the join key to the lolesports/Cito feed.
+            NestedField(15, 'riot_game_id', StringType(), required=False),
+            NestedField(16, 'vod', StringType(), required=False),
+            NestedField(17, 'source_url', StringType(), required=False),
+            identifier_field_ids=[1],
+        ),
+    ),
+    # One row per tournament (Leaguepedia `Tournaments`), keyed by OverviewPage.
+    'tournaments': IcebergTableSpec(
+        schema=Schema(
+            NestedField(1, 'tournament_id', StringType(), required=True),
+            NestedField(2, 'name', StringType(), required=False),
+            NestedField(3, 'league', StringType(), required=False),
+            NestedField(4, 'region', StringType(), required=False),
+            NestedField(5, 'split', StringType(), required=False),
+            NestedField(6, 'year', StringType(), required=False),
+            NestedField(7, 'tier', StringType(), required=False),
+            NestedField(8, 'date_start', StringType(), required=False),
+            NestedField(9, 'date_end', StringType(), required=False),
+            NestedField(10, 'source_url', StringType(), required=False),
+            identifier_field_ids=[1],
+        ),
+    ),
+    # One row per match/series (Leaguepedia `MatchSchedule`), keyed by MatchId.
+    # Individual games live in `games`; `winner` is 1 | 2 (which side won the series).
+    'matches': IcebergTableSpec(
+        schema=Schema(
+            NestedField(1, 'match_id', StringType(), required=True),
+            NestedField(2, 'tournament', StringType(), required=False),
+            NestedField(3, 'tab', StringType(), required=False),
+            NestedField(4, 'team1', StringType(), required=False),
+            NestedField(5, 'team2', StringType(), required=False),
+            NestedField(6, 'team1_score', StringType(), required=False),
+            NestedField(7, 'team2_score', StringType(), required=False),
+            NestedField(8, 'winner', StringType(), required=False),
+            NestedField(9, 'best_of', StringType(), required=False),
+            NestedField(10, 'datetime_utc', StringType(), required=False),
+            NestedField(11, 'source_url', StringType(), required=False),
             identifier_field_ids=[1],
         ),
     ),

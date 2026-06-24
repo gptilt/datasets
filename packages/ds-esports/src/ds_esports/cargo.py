@@ -39,7 +39,7 @@ class CargoClient(dg.ConfigurableResource):
     # Pacing knobs (overridable where the resource is constructed).
     # Leaguepedia advertises ~2 req/s but its edge may throttle harder;
     # the known-good rate is ~1 req / 2s (0.5 req/s).
-    page_delay_s: float = 2.0
+    page_delay_s: float = 1.0
     ratelimit_backoff_s: float = 60.0
     max_ratelimit_retries: int = 5
 

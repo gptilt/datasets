@@ -57,11 +57,71 @@ _TEAMS_FIELDS = ", ".join([
     "IsDisbanded",
 ])
 
+# `ScoreboardGames` is the per-game competitive record (one row per game played):
+# the grounding payload — Patch, the two teams, champion picks/bans, the date, and the
+# GameId / MatchId / RiotPlatformGameId keys. A narrow subset of the table's 69 columns;
+# the per-team objective/stat columns (Team1Dragons/Barons/Towers/Kills/Gold, …) are
+# available for a future game-level corroboration table, but aren't needed for grounding.
+# Picks/bans are Cargo List fields (comma-delimited), returned as comma-separated strings.
+_SCOREBOARD_GAMES_FIELDS = ", ".join([
+    "GameId",
+    "MatchId",
+    "OverviewPage",
+    "Tournament",
+    "Team1",
+    "Team2",
+    "WinTeam",
+    "DateTime_UTC",
+    "Patch",
+    "Team1Picks",
+    "Team2Picks",
+    "Team1Bans",
+    "Team2Bans",
+    "Gamelength",
+    "N_GameInMatch",
+    "RiotPlatformGameId",
+    "VOD",
+])
+
+# `Tournaments` — one row per tournament; metadata for resolving a title's event
+# (name, league, region, split, year, tier, start/end dates).
+_TOURNAMENTS_FIELDS = ", ".join([
+    "OverviewPage",
+    "Name",
+    "League",
+    "Region",
+    "Split",
+    "Year",
+    "TournamentLevel",
+    "DateStart",
+    "Date",
+])
+
+# `MatchSchedule` — one row per match (series): the two teams, series score, best-of,
+# and scheduled date. Individual games are in ScoreboardGames.
+_MATCH_SCHEDULE_FIELDS = ", ".join([
+    "MatchId",
+    "OverviewPage",
+    "Tab",
+    "Team1",
+    "Team2",
+    "Team1Score",
+    "Team2Score",
+    "Winner",
+    "BestOf",
+    "DateTime_UTC",
+])
+
 # (output_name, cargo_table, fields, raw_table_name)
+# Bundled into one op so all Cargo scrapes share a CargoClient and run sequentially —
+# splitting them would let pages interleave and blow the ≤2 req/s politeness budget.
 _SCRAPES = [
     ("raw_esports_leaguepedia_players",          "Players",         _PLAYERS_FIELDS,          "players"),
     ("raw_esports_leaguepedia_player_redirects", "PlayerRedirects", _PLAYER_REDIRECTS_FIELDS, "player_redirects"),
     ("raw_esports_leaguepedia_teams",            "Teams",           _TEAMS_FIELDS,            "teams"),
+    ("raw_esports_leaguepedia_scoreboard_games", "ScoreboardGames", _SCOREBOARD_GAMES_FIELDS, "scoreboard_games"),
+    ("raw_esports_leaguepedia_tournaments",      "Tournaments",     _TOURNAMENTS_FIELDS,      "tournaments"),
+    ("raw_esports_leaguepedia_match_schedule",   "MatchSchedule",   _MATCH_SCHEDULE_FIELDS,   "match_schedule"),
 ]
 
 

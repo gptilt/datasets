@@ -21,7 +21,7 @@ import polars as pl
 
 from .hub import HuggingFaceHub
 from .render import render_card_template
-from .schemata import ESPORTS, Dataset
+from .schemata import ESPORTS_ENTITIES, ESPORTS_MATCHES, Dataset
 
 
 def build_publish_definitions(ds: Dataset):
@@ -117,5 +117,9 @@ def build_publish_definitions(ds: Dataset):
 
 
 asset_publish_esports, job_publish_esports, schedule_publish_esports = (
-    build_publish_definitions(ESPORTS)
+    build_publish_definitions(ESPORTS_ENTITIES)
+)
+
+asset_publish_esports_matches, job_publish_esports_matches, schedule_publish_esports_matches = (
+    build_publish_definitions(ESPORTS_MATCHES)
 )
