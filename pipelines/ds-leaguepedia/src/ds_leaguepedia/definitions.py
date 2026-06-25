@@ -6,8 +6,6 @@ Single weekly job covers raw → clean for Phase 1; both assets share
 """
 import dagster as dg
 
-from .partitions import partition_per_week
-
 
 # All assets in the package are tagged with group_name="esports" — selecting on
 # the group keeps the job definition future-proof when we add matches/scoreboards.

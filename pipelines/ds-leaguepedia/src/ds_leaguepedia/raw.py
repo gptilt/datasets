@@ -16,11 +16,11 @@ deliberately narrow so that future Cargo schema changes only break us when they
 touch something we use.
 """
 import dagster as dg
-from ds_common import no_backfills
+from ds_platform import no_backfills
 from ds_storage import StorageS3
 
 from .cargo import CargoClient
-from .partitions import partition_kwargs, partition_per_week
+from ds_platform import partition_kwargs, partition_per_week
 
 
 # `Players` is Leaguepedia's unified persons table — players, ex-pros, coaches,

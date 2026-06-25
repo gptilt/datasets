@@ -5,7 +5,7 @@ and the job that publishes leaguepedia tables to HuggingFace.
 """
 import dagster as dg
 import ds_leaguepedia, ds_hugging_face, ds_storage
-from ds_runtime import *
+from ds_platform import *
 
 
 modules = [ds_leaguepedia, ds_hugging_face]

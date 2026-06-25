@@ -1,4 +1,4 @@
-from ds_common import convert_polars_df_to_pyarrow_table_using_iceberg_schema
+from .polars import convert_polars_df_to_pyarrow_table_using_iceberg_schema
 import duckdb
 from functools import reduce
 import polars as pl

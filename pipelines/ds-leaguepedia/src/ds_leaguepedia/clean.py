@@ -12,7 +12,7 @@ import dagster as dg
 import polars as pl
 from ds_storage import StorageIceberg, StorageS3
 
-from .partitions import partition_kwargs, partition_per_week
+from ds_platform import partition_kwargs, partition_per_week
 from .schemata import SCHEMATA
 
 

@@ -1,7 +1,11 @@
 """
-Shared runtime configuration: environment variables resolved at runtime.
+Shared deployment layer: environment config + orchestration scaffolding
+(the weekly partition scheme and the backfill policy) that every pipeline builds on.
 """
 import dagster as dg
+
+from .backfills import no_backfills
+from .partitions import partition_kwargs, partition_per_week
 
 ENVIRONMENT = dg.EnvVar("ENVIRONMENT")
 

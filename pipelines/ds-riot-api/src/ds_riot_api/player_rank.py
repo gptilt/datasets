@@ -1,4 +1,5 @@
-from ds_common import no_backfills, tqdm_range
+from ds_common import tqdm_range
+from ds_platform import no_backfills
 from .get import *
 from .constants import SERVERS, TIERS_AND_DIVISIONS, ELITE_TIERS, REGION_PER_SERVER
 import dagster as dg

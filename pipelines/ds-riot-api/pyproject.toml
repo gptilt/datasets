@@ -9,6 +9,7 @@ dependencies = [
     "pyiceberg",
     "requests",
     "ds_common",
+    "ds_platform",
     "ds_storage",
 ]
 

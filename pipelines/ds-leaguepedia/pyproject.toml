@@ -6,7 +6,7 @@ dependencies = [
     "pyarrow",
     "pyiceberg",
     "mwcleric",
-    "ds_common",
+    "ds_platform",
     "ds_storage",
 ]
 

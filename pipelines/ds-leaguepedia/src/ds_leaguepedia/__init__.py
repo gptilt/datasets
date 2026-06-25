@@ -8,6 +8,5 @@ from .clean import (
     asset_clean_tournaments,
 )
 from .definitions import job_esports_phase_1, schedule_esports_phase_1
-from .partitions import partition_per_week
 from .raw import asset_raw_leaguepedia
 from .schemata import SCHEMATA
