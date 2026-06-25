@@ -228,6 +228,9 @@ def _person_aliases(players: list[dict] | dict, redirects: list[dict] | dict) ->
     aliases: list[dict] = []
     for player in players:
         person_id = player["OverviewPage"]
+        # Self-alias: the canonical id is always a resolvable surface form, so every
+        # entity has at least one alias row and consumers can match on the id itself.
+        aliases.append(_alias(person_id, person_id, "person", "canonical"))
         if player.get("ID"):
             aliases.append(_alias(player["ID"], person_id, "person", "ign"))
         if player.get("Name"):
@@ -245,10 +248,13 @@ def _person_aliases(players: list[dict] | dict, redirects: list[dict] | dict) ->
 
 
 def _team_aliases(teams: list[dict] | dict) -> list[dict]:
-    """Alias rows for teams (entity_type='team') covering `Name` and `Short`."""
+    """Alias rows for teams (entity_type='team') covering the canonical id, `Name`, and `Short`."""
     aliases: list[dict] = []
     for team in teams:
         team_id = team["PageName"]
+        # Self-alias: the canonical id (PageName) is always a resolvable surface form —
+        # `matches.team1/team2` carry it, so denormalized grounding can hit it directly.
+        aliases.append(_alias(team_id, team_id, "team", "canonical"))
         if team.get("Name"):
             aliases.append(_alias(team["Name"], team_id, "team", "short"))
         if team.get("Short") and team.get("Short") != team.get("Name"):

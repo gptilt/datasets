@@ -46,6 +46,7 @@ SCHEMATA = {
             # cover both public figures and teams. A name resolver / privacy matcher
             # consumes the whole table and keeps entity_type alongside each hit.
             NestedField(3, 'entity_type', StringType(), required=True),
+            # canonical (the entity id itself, always present); plus
             # ign | real_name | romanization | other (person); short (team).
             NestedField(4, 'alias_type', StringType(), required=True),
             # Composite PK: an entity has many aliases, but each

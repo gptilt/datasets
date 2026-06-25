@@ -34,7 +34,7 @@ class Dataset:
 
 
 ESPORTS_ENTITIES = Dataset(
-    slug="esports",
+    slug="esports_entities",
     repo_id="gptilt/lol-esports-entities",
     license="cc-by-sa-3.0",
     pretty_name="League of Legends Esports Directory",
