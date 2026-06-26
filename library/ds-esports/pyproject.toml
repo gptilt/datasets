@@ -1,11 +1,9 @@
 [project]
-name = "ds-documents"
+name = "ds-esports"
 version = "0.1.0"
 dependencies = [
     "polars",
-    "pyiceberg",
-    "ds_esports",
-    "ds_storage",
+    "pydantic",
 ]
 
 [build-system]
@@ -13,4 +11,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ds_documents"]
+packages = ["src/ds_esports"]
