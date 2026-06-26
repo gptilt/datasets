@@ -10,6 +10,7 @@ from pyiceberg.types import (
     BooleanType,
     DateType,
     TimestampType,
+    ListType,
 )
 
 
@@ -25,18 +26,26 @@ ICEBERG_TO_POLARS = {
 }
 
 
+def _iceberg_type_to_polars(iceberg_type):
+    """
+    Map a single Iceberg field type to its Polars dtype, recursing for complex types.
+    """
+    scalar = ICEBERG_TO_POLARS.get(type(iceberg_type))
+    if scalar is not None:
+        return scalar
+    
+    # List columns (e.g. games picks/bans = list<string>) nest their element type.
+    if isinstance(iceberg_type, ListType):
+        return pl.List(_iceberg_type_to_polars(iceberg_type.element_type))
+    
+    raise ValueError(f"Unsupported Iceberg type: {iceberg_type}")
+
+
 def iceberg_to_polars_schema(iceberg_schema):
-    polars_schema = {}
-
-    for field in iceberg_schema.fields:
-        iceberg_type = type(field.field_type)
-
-        if iceberg_type not in ICEBERG_TO_POLARS:
-            raise ValueError(f"Unsupported Iceberg type: {field.field_type}")
-
-        polars_schema[field.name] = ICEBERG_TO_POLARS[iceberg_type]
-
-    return polars_schema
+    return {
+        field.name: _iceberg_type_to_polars(field.field_type)
+        for field in iceberg_schema.fields
+    }
 
 
 def convert_polars_df_to_pyarrow_table_using_iceberg_schema(
