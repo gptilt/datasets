@@ -239,16 +239,14 @@ def asset_clean_riot_api_player_rank(
     end = start + timedelta(days=1)
     
     # Get ranks already processed natively into a Set of Tuples using iter_rows
-    df_existing_records = pl.from_arrow(
-        catalog_clean.scan_table(
-            table_name=CLEAN_TABLE_NAME,
-            selected_fields=["tier", "division"],
-            row_filter=And(
-                GreaterThanOrEqual("timestamp", start),
-                LessThan("timestamp", end)
-            ),
-            server=server,
-        ).to_arrow()
+    df_existing_records = catalog_clean.load_table_to_polars(
+        table_name=CLEAN_TABLE_NAME,
+        selected_fields=["tier", "division"],
+        row_filter=And(
+            GreaterThanOrEqual("timestamp", start),
+            LessThan("timestamp", end)
+        ),
+        server=server,
     ).unique()
     
     existing_records = set(df_existing_records.select(["tier", "division"]).iter_rows())

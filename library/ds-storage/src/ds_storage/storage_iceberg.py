@@ -139,6 +139,30 @@ class StorageIceberg(Storage):
         return table.scan(**scan_kwargs)
 
 
+    def load_table_to_polars(
+        self,
+        table_name: str,
+        selected_fields: list[str] = None,
+        row_filter: BooleanExpression = None,
+        **partition_columns: dict[str, str] | None,
+    ) -> pl.DataFrame:
+        """
+        Read an Iceberg table straight into a Polars DataFrame — the default read path.
+
+        Wraps `scan_table(...).to_arrow()`
+        and forwards the same `selected_fields`, `row_filter`, and partition kwargs.
+        Reach for `scan_table` only when you need the pyiceberg `DataScan` itself
+        (lazy planning, plan files, bespoke Arrow handling).
+        """
+        scan = self.scan_table(
+            table_name,
+            selected_fields=selected_fields,
+            row_filter=row_filter,
+            **partition_columns,
+        )
+        return pl.from_arrow(scan.to_arrow())
+
+
     def write_table(
         self,
         table_name: str,

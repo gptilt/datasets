@@ -17,7 +17,6 @@ import time
 
 import dagster as dg
 import huggingface_hub as hub
-import polars as pl
 
 from .hub import HuggingFaceHub
 from .render import render_card_template
@@ -43,7 +42,7 @@ def build_publish_definitions(ds: Dataset):
             staging = pathlib.Path(tmp)
 
             for table in ds.tables:
-                df = pl.from_arrow(catalog.scan_table(table).to_arrow())
+                df = catalog.load_table_to_polars(table)
                 table_dir = staging / table
                 table_dir.mkdir(parents=True, exist_ok=True)
                 df.write_parquet(table_dir / f"{table}.parquet")
