@@ -4,18 +4,18 @@ Self-contained Dagster code location for the Leaguepedia (Fandom/Cargo) jobs
 and the job that publishes leaguepedia tables to HuggingFace.
 """
 import dagster as dg
-import ds_esports, ds_hugging_face, ds_storage
-from ds_runtime import *
+import ds_leaguepedia, ds_hugging_face, ds_storage
+from ds_platform import *
 
 
-modules = [ds_esports, ds_hugging_face]
+modules = [ds_leaguepedia, ds_hugging_face]
 jobs = [
-    ds_esports.job_esports_phase_1,
+    ds_leaguepedia.job_esports_phase_1,
     ds_hugging_face.job_publish_esports,
     ds_hugging_face.job_publish_esports_matches,
 ]
 schedules = [
-    ds_esports.schedule_esports_phase_1,
+    ds_leaguepedia.schedule_esports_phase_1,
     ds_hugging_face.schedule_publish_esports,
     ds_hugging_face.schedule_publish_esports_matches,
 ]
@@ -34,7 +34,7 @@ resources = {
         access_key_id=BUCKET_ACCESS_KEY_ID,
         secret_access_key=BUCKET_SECRET_ACCESS_KEY,
     ),
-    "leaguepedia_cargo": ds_esports.CargoClient(
+    "leaguepedia_cargo": ds_leaguepedia.CargoClient(
         username=FANDOM_USERNAME,
         password=FANDOM_PASSWORD,
     ),
@@ -42,7 +42,7 @@ resources = {
         root=ENVIRONMENT,
         dataset='leaguepedia',
         schema_name='clean',
-        tables=list(ds_esports.SCHEMATA.keys()),
+        tables=list(ds_leaguepedia.SCHEMATA.keys()),
         warehouse_name=CATALOG_WAREHOUSE_NAME,
         catalog_uri=CATALOG_ENDPOINT,
         rest_signing_region=AWS_REGION,

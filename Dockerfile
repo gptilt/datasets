@@ -24,13 +24,13 @@ WORKDIR /opt/dagster/app
 # ── deps (intermediate) ──────────────────────────────────────────────────────
 # Copy ONLY the dependency manifests:
 # - The root pyproject/lockfile;
-# - Every workspace member's pyproject (--parents preserves the packages/<name>/ layout).
+# - Every workspace member's pyproject (--parents preserves the <tier>/<name>/ layout).
 # Then install the external dependencies WITHOUT the local packages (--no-install-workspace).
 # No application source is present, so this multi-GB layer is reused on every code-only push
 # and rebuilds only when a manifest or the lockfile changes.
 FROM base AS deps
 COPY pyproject.toml uv.lock ./
-COPY --parents packages/*/pyproject.toml ./
+COPY --parents library/*/pyproject.toml pipelines/*/pyproject.toml ./
 RUN uv sync --no-dev --extra private --group server --frozen --no-install-workspace --no-cache
 
 # ── app (user-code image) ────────────────────────────────────────────────────
@@ -44,7 +44,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
 # Copy workspace packages and the root source code.
-COPY packages/ ./packages/
+COPY library/ ./library/
+COPY pipelines/ ./pipelines/
 COPY src/ ./src/
 # Instance + workspace config (DAGSTER_HOME points here at runtime).
 COPY dagster.yaml workspace.yaml ./
@@ -71,7 +72,7 @@ ENV DAGSTER_HOME=/opt/dagster/app
 LABEL org.opencontainers.image.source=${IMAGE_SOURCE}
 
 # ── cp (control-plane image) ───────────────────────────────────────────────────
-# No packages/, no src/ — only config + dagster core.
+# No library/ or pipelines/, no src/ — only config + dagster core.
 FROM base AS cp
 ARG IMAGE_SOURCE
 COPY --from=app /tmp/cp-constraints.txt ./cp-constraints.txt

@@ -8,7 +8,7 @@ with the submodule present it loads the full chatbot definitions.
 """
 import dagster as dg
 import ds_storage
-from ds_runtime import *
+from ds_platform import *
 
 
 modules = []

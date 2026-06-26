@@ -20,3 +20,7 @@ load_from:
       host: dagster-user-code-chatbot
       port: 4000
       location_name: chatbot
+  - grpc_server:
+      host: dagster-user-code-document
+      port: 4000
+      location_name: document

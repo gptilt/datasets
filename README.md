@@ -22,6 +22,7 @@ Published datasets are split into two quality tiers:
 | Dataset | Tier | Tables | Available on | Access |
 | --- | --- | --- | --- | --- |
 | [`gptilt/lol-esports-entities`](https://huggingface.co/datasets/gptilt/lol-esports-entities) | Clean | `public_figures`, `teams`, `entity_aliases` | 🤗 Hugging Face | Free · CC BY-SA 3.0 |
+| [`gptilt/lol-esports-matches`](https://huggingface.co/datasets/gptilt/lol-esports-matches) | Clean | `games`, `tournaments`, `matches` | 🤗 Hugging Face | Free · CC BY-SA 3.0 |
 
 > Distribution via [AWS Data Exchange](https://aws.amazon.com/data-exchange/) is planned; rows in that column will be filled in as datasets are listed there. All currently published data is free to access — licensing terms are per-dataset and always restated on the Hugging Face card.
 
@@ -37,7 +38,7 @@ How each source dataset is structured and which tables it produces, across schem
 4. The `schema` specifies the degree of quality of the data (e.g. `raw`, `clean`, `curated`).
 5. The `table` specifies a relation (e.g. `league_entries`, which contains data collected from the Riot API on player entries in a league).
 
-> The `dataset` segment names the **source platform** the data came from, never the consuming app or the game domain. Leaguepedia data lives under `leaguepedia` (not `esports` or `lol`), the same way Riot's data lives under `riot_api` — so a future source (e.g. a different wiki for another game) becomes its own self-contained namespace rather than being crammed into a shared one. The broader "esports" grouping lives at the orchestration layer (the `ds-esports` package / Dagster asset group), not in storage.
+> The `dataset` segment typically names the **source platform** the data came from. Leaguepedia data lives under `leaguepedia` (not `esports` or `lol`), the same way Riot's data lives under `riot_api` — so a future source (e.g. a different wiki for another game) becomes its own self-contained namespace rather than being crammed into a shared one. The broader "esports" grouping is an orchestration/domain concern — the `leaguepedia` Dagster code location, and reusable esports logic in the `ds-esports` library — not a storage namespace.
 
 The tables below are written as `dataset.schema.table`; the `root` (`dev`/`prod`) is omitted.
 
@@ -67,7 +68,7 @@ The tables below are written as `dataset.schema.table`; the `root` (`dev`/`prod`
 
 ## Getting Started
 
-If you'd rather do things yourself, the easiest way to go about it is to clone the repository, open a terminal inside the newly created directory, and run `make init`. This will create the Python virtual environment and install the project dependencies. You can then activate the virtual environment with `source venv/bin/activate` if you're in a Linux environment, or `source venv/Scripts/activate` if you're in a Windows environment.
+If you'd rather do things yourself, the easiest way to go about it is to clone the repository, open a terminal inside the newly created directory, and run `make init`. This will create the Python virtual environment and install the project dependencies. You can then activate the virtual environment with `source .venv/bin/activate` if you're in a Linux environment, or `source .venv/Scripts/activate` if you're in a Windows environment.
 
 Then, you'll be able to use the Dagster CLI to boot the orchestrator up:
 
@@ -81,12 +82,12 @@ Most pipelines require a number of secrets that should be available at runtime a
 
 - `HUGGING_FACE_TOKEN`: a Hugging Face token with **write** access to the `gptilt` organization's dataset repositories (publishing creates repos and uploads data + cards);
 - `RIOT_API_KEY`: a Riot Games API key - any kind should work;
-- `FANDOM_USERNAME`: a Leaguepedia (Fandom) bot login, in the form `Account@BotName`, used by `ds-esports` to query Cargo;
+- `FANDOM_USERNAME`: a Leaguepedia (Fandom) bot login, in the form `Account@BotName`, used by `ds-leaguepedia` to query Cargo;
 - `FANDOM_PASSWORD`: the password for the Leaguepedia bot login;
 - `S3_BUCKET_NAME`: the name of the S3-compatible bucket;
-- `S3_BUCKET_ENDPOINT`: the name of the S3-compatible bucket;
-- `S3_BUCKET_ACCESS_KEY_ID`: the name of the S3-compatible bucket;
-- `S3_BUCKET_SECRET_ACCESS_KEY`: the name of the S3-compatible bucket;
+- `S3_BUCKET_ENDPOINT`: the endpoint of the S3-compatible bucket;
+- `S3_BUCKET_ACCESS_KEY_ID`: the access key ID for the S3-compatible bucket;
+- `S3_BUCKET_SECRET_ACCESS_KEY`: the secret access key for the S3-compatible bucket;
 - `CATALOG_ENDPOINT`: the endpoint of the Iceberg catalog;
 - `CATALOG_WAREHOUSE_NAME`: the warehouse name of the Iceberg catalog;
 - `CATALOG_TOKEN`: the token for accessing the Iceberg catalog.
@@ -95,15 +96,25 @@ Most pipelines require a number of secrets that should be available at runtime a
 
 ### Modules
 
-- `ds-chatbot`: One of the very few private repositories of GPTilt! 🤫
+The workspace packages are split into two tiers, made explicit by the directory layout:
+
+**`library/` — reusable, deployment-agnostic components** (each independently publishable):
+
 - `ds-common`: Common utilities for the repository. 🛠️
-- `ds-documents`: For building an enriched document store. 📚
-- `ds-esports`: For building assets from [Leaguepedia](https://lol.fandom.com/) — esports public figures, teams, and a unified alias index. 🏆
-- `ds-hugging-face`: For publishing datasets to [🤗 Hugging Face](https://huggingface.co/gptilt).
-- `ds-riot-api`: For building assets with provenance from the [Riot Games API](https://developer.riotgames.com/apis). 🌐
+- `ds-esports`: Reusable esports-domain logic — e.g. grounding content to the pro match it discusses. 🧩
+- `ds-models`: Local ML model resources (e.g. a local LLM). 🤖
 - `ds-scribe`: For transcribing audio to text. 🖊️
 - `ds-storage`: Custom storage interface. Maintenance limited to usage. 🏭
 - `ds-tables`: TBD.
+
+**`pipelines/` — deployment-bound code** (own a Dagster code location / produce datasets, or bind this deployment):
+
+- `ds-chatbot`: One of the very few private repositories of GPTilt! 🤫
+- `ds-documents`: For building an enriched document store. 📚
+- `ds-hugging-face`: For publishing datasets to [🤗 Hugging Face](https://huggingface.co/gptilt).
+- `ds-leaguepedia`: For building assets from [Leaguepedia](https://lol.fandom.com/) — esports public figures, teams, and a unified alias index. 🏆
+- `ds-riot-api`: For building assets with provenance from the [Riot Games API](https://developer.riotgames.com/apis). 🌐
+- `ds-runtime`: Shared runtime configuration (environment variables) for the deployment. ⚙️
 
 ## Contributing
 
